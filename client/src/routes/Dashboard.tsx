@@ -63,6 +63,31 @@ function submissionKey(day: ChallengeDay, challengeId: string): string {
   return `${day}:${challengeId}`;
 }
 
+function ChallengeDescription({ challenge }: { readonly challenge: Challenge }) {
+  if (!challenge.checklist?.length && !challenge.uploadInstructions && !challenge.bonusDescription) {
+    return <p className="mt-1 text-sm text-gray-500">{challenge.description}</p>;
+  }
+
+  return (
+    <div className="mt-1 space-y-2 text-sm leading-6 text-gray-600">
+      <p>{challenge.description}</p>
+      {challenge.checklist?.length ? (
+        <ul className="list-disc space-y-1 pl-5">
+          {challenge.checklist.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
+      {challenge.uploadInstructions ? <p>{challenge.uploadInstructions}</p> : null}
+      {challenge.bonusDescription ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+          <span className="font-bold">Bonus Points:</span> {challenge.bonusDescription}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function ChallengeSubmit({
   challenge,
   submitted,
@@ -213,9 +238,9 @@ export function Dashboard() {
                     return (
                       <article className="card p-5" key={challenge.id}>
                         <div className="flex items-start justify-between gap-3">
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <h3 className="text-lg font-bold">{challenge.title}</h3>
-                            <p className="mt-1 text-sm text-gray-500">{challenge.description}</p>
+                            <ChallengeDescription challenge={challenge} />
                           </div>
                           {submitted ? <StatusPill status={submitted.status} /> : null}
                         </div>

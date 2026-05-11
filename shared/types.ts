@@ -13,6 +13,9 @@ export interface Challenge {
   readonly type: ChallengeType;
   readonly title: string;
   readonly description: string;
+  readonly checklist?: readonly string[];
+  readonly uploadInstructions?: string;
+  readonly bonusDescription?: string;
   readonly bonusAvailable?: boolean;
 }
 

@@ -29,7 +29,14 @@
         "id": "clean-room",
         "type": "photo",
         "title": "Clean Your Room",
-        "description": "Before/after photos. Bonus if a parent is in the after photo.",
+        "description": "Clean and organize your room:",
+        "checklist": [
+          "Make your bed",
+          "Clean surfaces",
+          "Straighten up belongings"
+        ],
+        "uploadInstructions": "Upload a before and after picture to the app.",
+        "bonusDescription": "Include your mom or parent in the after picture with your clean room.",
         "bonusAvailable": true
       },
       {
@@ -44,7 +51,16 @@
         "id": "acts-of-service",
         "type": "photo",
         "title": "Acts of Service",
-        "description": "Upload a family service photo."
+        "description": "Find a way to serve someone in your family today. Some ideas include:",
+        "checklist": [
+          "Doing the dishes",
+          "Cooking dinner",
+          "Folding someone else's laundry",
+          "Vacuuming the house",
+          "Taking out the trash",
+          "Helping a younger sibling with homework"
+        ],
+        "uploadInstructions": "Other ideas are welcome too. Upload a picture showing your act of service."
       },
       {
         "id": "behavior-wed",
@@ -58,7 +74,8 @@
         "id": "thank-you-note",
         "type": "photo",
         "title": "Thank You Note",
-        "description": "Upload a photo of a note to family."
+        "description": "Write a thank-you note to a parent or family member, thanking them for all they do.",
+        "uploadInstructions": "Take a picture with the parent or family member and upload it to the app."
       },
       {
         "id": "behavior-thu",
