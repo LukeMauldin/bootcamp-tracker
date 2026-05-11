@@ -1,0 +1,78 @@
+{
+  "challengeStartDate": "2026-05-11",
+  "timezone": "America/Chicago",
+  "basePoints": 5,
+  "bonusPoints": 2,
+  "days": {
+    "mon": [
+      {
+        "id": "get-started",
+        "type": "boolean",
+        "title": "Get Started",
+        "description": "Register and join your team."
+      },
+      {
+        "id": "sportsu-signup",
+        "type": "boolean",
+        "title": "Sign up for SportsU",
+        "description": "Create or confirm your SportsU account."
+      },
+      {
+        "id": "behavior-mon",
+        "type": "behavior",
+        "title": "Behavior Scores",
+        "description": "Sum your daily scores and upload the sheet."
+      }
+    ],
+    "tue": [
+      {
+        "id": "clean-room",
+        "type": "photo",
+        "title": "Clean Your Room",
+        "description": "Before/after photos. Bonus if a parent is in the after photo."
+      },
+      {
+        "id": "behavior-tue",
+        "type": "behavior",
+        "title": "Behavior Scores",
+        "description": "Sum your daily scores and upload the sheet."
+      }
+    ],
+    "wed": [
+      {
+        "id": "acts-of-service",
+        "type": "photo",
+        "title": "Acts of Service",
+        "description": "Upload a family service photo."
+      },
+      {
+        "id": "behavior-wed",
+        "type": "behavior",
+        "title": "Behavior Scores",
+        "description": "Sum your daily scores and upload the sheet."
+      }
+    ],
+    "thu": [
+      {
+        "id": "thank-you-note",
+        "type": "photo",
+        "title": "Thank You Note",
+        "description": "Upload a photo of a note to family."
+      },
+      {
+        "id": "behavior-thu",
+        "type": "behavior",
+        "title": "Behavior Scores",
+        "description": "Sum your daily scores and upload the sheet."
+      }
+    ],
+    "fri": [
+      {
+        "id": "behavior-fri",
+        "type": "behavior",
+        "title": "Behavior Scores",
+        "description": "Sum your daily scores and upload the sheet."
+      }
+    ]
+  }
+}

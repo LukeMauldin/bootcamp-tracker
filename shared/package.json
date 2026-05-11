@@ -1,0 +1,13 @@
+{
+  "name": "@bootcamp/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": {
+      "types": "./types.ts",
+      "default": "./empty.js"
+    }
+  },
+  "types": "./types.ts"
+}
