@@ -51,7 +51,7 @@ export function Leaderboard() {
     <div className="space-y-5">
       <header>
         <p className="text-sm font-semibold uppercase tracking-wide text-blue-900">Team race</p>
-        <h1 className="text-3xl font-bold">Leaderboard</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Leaderboard</h1>
       </header>
       {groups.map((group) => (
         <section className="card divide-y divide-gray-200" key={group.division}>
@@ -61,7 +61,7 @@ export function Leaderboard() {
             const isSelected = selectedTeamId === row.teamId;
             return (
               <article key={row.teamId}>
-                <div className="flex items-center gap-4 p-4">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4 sm:gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: row.color }}>
                     {row.rank === 1 ? <Trophy size={20} /> : row.rank}
                   </div>
@@ -73,7 +73,7 @@ export function Leaderboard() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold">{row.points}</p>
+                    <p className="text-xl font-bold tabular-nums sm:text-2xl">{row.points}</p>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">points</p>
                   </div>
                   {isCoach ? (
@@ -113,35 +113,64 @@ export function Leaderboard() {
 
                         <div>
                           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-700">Players</h2>
-                          <div className="overflow-x-auto">
-                            <table className="w-full min-w-[620px] text-left text-sm">
-                              <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                                <tr>
-                                  <th className="py-2 pr-3 font-semibold">Player</th>
-                                  <th className="px-3 py-2 font-semibold">Verified</th>
-                                  <th className="px-3 py-2 font-semibold">Pending</th>
-                                  <th className="px-3 py-2 font-semibold">Rejected</th>
-                                  <th className="px-3 py-2 font-semibold">Adjustments</th>
-                                  <th className="py-2 pl-3 text-right font-semibold">Points</th>
+                          <ul className="space-y-2 md:hidden">
+                            {detail.players.map((player) => (
+                              <li key={player.uid} className="rounded-lg border border-gray-200 bg-white p-3">
+                                <div className="flex items-baseline justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-slate-900">{player.displayName}</p>
+                                    <p className="truncate text-xs text-gray-500">{player.email}</p>
+                                  </div>
+                                  <p className="shrink-0 text-base font-bold tabular-nums">{player.totalPoints}</p>
+                                </div>
+                                <dl className="mt-2 grid grid-cols-4 gap-2 text-center text-xs">
+                                  <div>
+                                    <dt className="text-gray-500">Verified</dt>
+                                    <dd className="font-semibold tabular-nums">{player.verifiedSubmissions}</dd>
+                                  </div>
+                                  <div>
+                                    <dt className="text-gray-500">Pending</dt>
+                                    <dd className="font-semibold tabular-nums">{player.pendingSubmissions}</dd>
+                                  </div>
+                                  <div>
+                                    <dt className="text-gray-500">Rejected</dt>
+                                    <dd className="font-semibold tabular-nums">{player.rejectedSubmissions}</dd>
+                                  </div>
+                                  <div>
+                                    <dt className="text-gray-500">Adj</dt>
+                                    <dd className="font-semibold tabular-nums">{formatSigned(player.adjustments)}</dd>
+                                  </div>
+                                </dl>
+                              </li>
+                            ))}
+                          </ul>
+                          <table className="hidden w-full text-left text-sm md:table">
+                            <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+                              <tr>
+                                <th className="py-2 pr-3 font-semibold">Player</th>
+                                <th className="px-3 py-2 font-semibold">Verified</th>
+                                <th className="px-3 py-2 font-semibold">Pending</th>
+                                <th className="px-3 py-2 font-semibold">Rejected</th>
+                                <th className="px-3 py-2 font-semibold">Adjustments</th>
+                                <th className="py-2 pl-3 text-right font-semibold">Points</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {detail.players.map((player) => (
+                                <tr key={player.uid}>
+                                  <td className="py-3 pr-3">
+                                    <p className="font-semibold text-slate-900">{player.displayName}</p>
+                                    <p className="text-xs text-gray-500">{player.email}</p>
+                                  </td>
+                                  <td className="px-3 py-3">{player.verifiedSubmissions}</td>
+                                  <td className="px-3 py-3">{player.pendingSubmissions}</td>
+                                  <td className="px-3 py-3">{player.rejectedSubmissions}</td>
+                                  <td className="px-3 py-3">{formatSigned(player.adjustments)}</td>
+                                  <td className="py-3 pl-3 text-right font-bold">{player.totalPoints}</td>
                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-200">
-                                {detail.players.map((player) => (
-                                  <tr key={player.uid}>
-                                    <td className="py-3 pr-3">
-                                      <p className="font-semibold text-slate-900">{player.displayName}</p>
-                                      <p className="text-xs text-gray-500">{player.email}</p>
-                                    </td>
-                                    <td className="px-3 py-3">{player.verifiedSubmissions}</td>
-                                    <td className="px-3 py-3">{player.pendingSubmissions}</td>
-                                    <td className="px-3 py-3">{player.rejectedSubmissions}</td>
-                                    <td className="px-3 py-3">{formatSigned(player.adjustments)}</td>
-                                    <td className="py-3 pl-3 text-right font-bold">{player.totalPoints}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
 
                         <div>

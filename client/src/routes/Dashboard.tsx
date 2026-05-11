@@ -200,7 +200,7 @@ export function Dashboard() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-900">{team?.name ?? "Team"}</p>
-          <h1 className="text-3xl font-bold">Weekly challenges</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Weekly challenges</h1>
           <p className="mt-1 text-sm text-gray-500">{profile?.displayName}</p>
         </div>
         {streak >= 2 ? (
@@ -231,7 +231,7 @@ export function Dashboard() {
             return (
               <div key={day}>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-bold">
+                  <h2 className="text-lg font-bold sm:text-xl">
                     {challengeDayLabels[day]} <span className="text-base font-semibold text-gray-500">{formatChallengeDate(dayDate)}</span>
                   </h2>
                   {isActiveDay ? <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold uppercase text-blue-900">Today</span> : null}
@@ -268,12 +268,12 @@ export function Dashboard() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Teammates</h2>
+          <h2 className="text-lg font-bold sm:text-xl">Teammates</h2>
           <span className="text-sm font-semibold text-gray-500">{teammates.length} players</span>
         </div>
         <div className="card divide-y divide-gray-200">
           {teammates.map((teammate) => (
-            <div className="flex items-center gap-3 p-4" key={teammate.uid}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4" key={teammate.uid}>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 text-sm font-bold text-white">
                 {teammate.displayName.slice(0, 1).toUpperCase()}
               </div>
@@ -309,13 +309,13 @@ export function Dashboard() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-xl font-bold">My submissions</h2>
+        <h2 className="mb-3 text-lg font-bold sm:text-xl">My submissions</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {history.slice(0, 6).map((submission) => (
             <article className="card p-4" key={submission.id}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{submission.challengeId}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{submission.challengeId}</p>
                   <p className="text-sm text-gray-500">{submission.dayDate}</p>
                 </div>
                 <StatusPill status={submission.status} />

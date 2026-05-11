@@ -81,7 +81,7 @@ function HelpTooltip({ text }: { readonly text: string }) {
       >
         <HelpCircle size={16} />
       </button>
-      <span className="pointer-events-none absolute left-1/2 top-10 z-10 hidden w-64 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg group-hover:block group-focus-within:block">
+      <span className="pointer-events-none absolute left-1/2 top-10 z-10 hidden w-[min(16rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg group-hover:block group-focus-within:block">
         {text}
       </span>
     </span>
@@ -145,7 +145,7 @@ export function Admin() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-900">Coach tools</p>
-          <h1 className="text-3xl font-bold">Admin</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Admin</h1>
         </div>
         <button className="btn-secondary w-fit" onClick={() => void load()}>
           <RefreshCw size={16} />
@@ -172,7 +172,7 @@ export function Admin() {
           <h2 className="text-base font-bold">Point adjustment</h2>
           <HelpTooltip text="Adds or subtracts points from the selected team's leaderboard total. Use a clear reason because adjustments are shown in team details." />
         </div>
-        <form className="grid gap-3 sm:grid-cols-[1fr_120px_2fr_auto]" onSubmit={(event) => void createAdjustment(event)}>
+        <form className="grid gap-3 md:grid-cols-[1fr_120px_2fr_auto]" onSubmit={(event) => void createAdjustment(event)}>
           <label>
             <span className="sr-only">Team</span>
             <select
@@ -226,7 +226,7 @@ export function Admin() {
 
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold">Submissions</h2>
+          <h2 className="text-lg font-bold sm:text-xl">Submissions</h2>
           <div className="flex items-center gap-2">
             <HelpTooltip text="Filter submissions by review state. Coaches usually clear Pending first, then audit Verified or Rejected if needed." />
             <select
@@ -261,17 +261,19 @@ export function Admin() {
                 const teamName = firstSub.team?.name ?? firstSub.teamId;
                 return (
                   <div key={userId} className="card p-4">
-                    <div className="mb-3 flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 font-bold text-white">
-                        {displayName.slice(0, 1).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-bold">{displayName}</p>
-                        <p className="text-sm text-gray-500">{teamName}</p>
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 font-bold text-white">
+                          {displayName.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-bold">{displayName}</p>
+                          <p className="text-sm text-gray-500">{teamName}</p>
+                        </div>
                       </div>
                       {firstSub.user ? (
                         <select
-                          className="field max-w-44"
+                          className="field w-full sm:ml-auto sm:w-44"
                           value={firstSub.user.teamId}
                           onChange={(event) => firstSub.user && void moveUser(firstSub.user.uid, event.target.value)}
                           title="Move this player and their existing submissions to another team."
@@ -311,8 +313,8 @@ export function Admin() {
                                   </div>
                                 ) : null}
                               </div>
-                              <div className="grid gap-2 sm:grid-cols-2 md:w-64 md:grid-cols-1">
-                                <p className="text-xs font-medium leading-relaxed text-gray-500 sm:col-span-2 md:col-span-1">
+                              <div className="grid gap-2 md:w-64">
+                                <p className="text-xs font-medium leading-relaxed text-gray-500">
                                   {submission.bonusAvailable
                                     ? `Verify ${basePoints} awards base points. Verify ${bonusTotal} adds the coach bonus.`
                                     : `Verify awards ${basePoints} base points.`}
