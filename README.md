@@ -214,13 +214,46 @@ docker run --rm -p 8080:8080 \
 
 ## Deployment
 
-Push to `main` after the Cloud Build GitHub trigger is connected. `cloudbuild.yaml` will:
+Run an idempotent deploy from the repo root:
+
+```bash
+npm run deploy
+```
+
+The deploy script:
+
+1. Ensures the small set of required GCP resources and IAM bindings exist.
+2. Reads Firebase Web config from `client/.env.production`, falling back to `client/.env.local`.
+3. Submits this working tree to Cloud Build using the dedicated `bootcamp-builder` service account.
+4. Verifies the deployed Cloud Run health endpoint and built SPA config.
+
+Use these lower-level commands when needed:
+
+```bash
+npm run deploy:setup
+npm run deploy:verify
+```
+
+`cloudbuild.yaml` will:
 
 1. Build the Docker image.
 2. Push it to Artifact Registry.
 3. Deploy `bootcamp-tracker` to Cloud Run.
 
 Cloud Run is deployed with `--allow-unauthenticated`; application access is enforced by Firebase ID tokens in the Express API.
+
+Push-trigger deployments can reuse `cloudbuild.yaml`; configure trigger substitutions for:
+
+```text
+_VITE_FIREBASE_API_KEY
+_VITE_FIREBASE_APP_ID
+```
+
+Configure the trigger service account as:
+
+```text
+bootcamp-builder@ch-bootcamp-496001.iam.gserviceaccount.com
+```
 
 ## Troubleshooting
 

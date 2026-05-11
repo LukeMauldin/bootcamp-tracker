@@ -22,6 +22,16 @@ RUN set -eu; \
         echo "$name must be provided as a Docker build arg" >&2; \
         exit 1; \
       fi; \
+      case "$value" in \
+        keyString:*) \
+          echo "$name must be the raw Firebase value, not a labeled CLI field" >&2; \
+          exit 1; \
+          ;; \
+      esac; \
+      if [ "$name" = "VITE_FIREBASE_API_KEY" ] && ! printf '%s' "$value" | grep -q '^AIza'; then \
+        echo "$name does not look like a Firebase Web API key" >&2; \
+        exit 1; \
+      fi; \
     done; \
     npm run build -w client
 
@@ -40,7 +50,6 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=server /app/node_modules ./node_modules
-COPY --from=server /app/server/node_modules ./server/node_modules
 COPY --from=server /app/server/dist ./server/dist
 COPY --from=server /app/server/src/data ./server/dist/data
 COPY --from=client /app/client/dist ./client/dist

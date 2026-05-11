@@ -126,14 +126,41 @@ docker run --rm -p 8080:8080 \
 
 ## Deployment Notes
 
-`cloudbuild.yaml` builds the Docker image, pushes it to Artifact Registry, and deploys Cloud Run with:
+Production deploys use Cloud Build and Cloud Run:
+
+```bash
+npm run deploy
+```
+
+Useful lower-level commands:
+
+```bash
+npm run deploy:setup
+npm run deploy:verify
+```
+
+`scripts/setup-gcp-deploy.zsh` is idempotent and ensures the deploy prerequisites exist:
+
+- Artifact Registry repo: `app`
+- Cloud Run service: `bootcamp-tracker`
+- Runtime service account: `bootcamp-runtime@ch-bootcamp-496001.iam.gserviceaccount.com`
+- Build service account: `bootcamp-builder@ch-bootcamp-496001.iam.gserviceaccount.com`
+
+`cloudbuild.yaml` builds the Docker image, pushes it to Artifact Registry, deploys Cloud Run, and explicitly grants public invoker access. The service runs with:
 
 ```text
+GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
 GCS_BUCKET=ch-bootcamp-496001-uploads
 TZ=UTC
 ```
 
-App-level authentication is handled by Firebase ID tokens, so Cloud Run is deployed with `--allow-unauthenticated`.
+App-level authentication is handled by Firebase ID tokens, so Cloud Run is public at the platform layer (`allUsers` with `roles/run.invoker`). Current deployed URL:
+
+```text
+https://bootcamp-tracker-jl7eg5xtqq-uc.a.run.app
+```
+
+For a nicer URL, prefer a custom domain through Cloud Run domain mapping for a low-overhead/simple deployment, or an external HTTPS load balancer with a serverless NEG when production-grade edge controls, Cloud Armor, custom TLS policy, or blocking the default Cloud Run URL matter.
 
 ## QA Expectations
 

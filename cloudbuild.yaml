@@ -7,28 +7,50 @@ steps:
       - --build-arg=VITE_FIREBASE_PROJECT_ID=${_VITE_FIREBASE_PROJECT_ID}
       - --build-arg=VITE_FIREBASE_APP_ID=${_VITE_FIREBASE_APP_ID}
       - -t
-      - us-central1-docker.pkg.dev/$PROJECT_ID/app/bootcamp:$COMMIT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
       - .
   - name: gcr.io/cloud-builders/docker
-    args: ["push", "us-central1-docker.pkg.dev/$PROJECT_ID/app/bootcamp:$COMMIT_SHA"]
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
       - run
       - deploy
-      - bootcamp-tracker
-      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app/bootcamp:$COMMIT_SHA
-      - --region=us-central1
+      - ${_SERVICE_NAME}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
+      - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
-      - --service-account=bootcamp-runtime@$PROJECT_ID.iam.gserviceaccount.com
+      - --service-account=${_RUNTIME_SERVICE_ACCOUNT}
       - --min-instances=0
       # Intentional: single-instance cap to control cost and avoid concurrent Firestore writes for this 5-day event.
       - --max-instances=1
-      - --set-env-vars=GCS_BUCKET=ch-bootcamp-496001-uploads,TZ=UTC
+      - --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GCS_BUCKET=${_GCS_BUCKET},TZ=UTC
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - add-iam-policy-binding
+      - ${_SERVICE_NAME}
+      - --region=${_REGION}
+      - --member=allUsers
+      - --role=roles/run.invoker
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
 options:
   logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true
 substitutions:
+  _REGION: us-central1
+  _AR_REPOSITORY: app
+  _IMAGE_NAME: bootcamp
+  _IMAGE_TAG: ${SHORT_SHA:-$BUILD_ID}
+  _SERVICE_NAME: bootcamp-tracker
+  _GCS_BUCKET: ch-bootcamp-496001-uploads
+  _RUNTIME_SERVICE_ACCOUNT: bootcamp-runtime@$PROJECT_ID.iam.gserviceaccount.com
   _VITE_FIREBASE_API_KEY: SET_IN_CLOUD_BUILD_TRIGGER
   _VITE_FIREBASE_AUTH_DOMAIN: ch-bootcamp-496001.firebaseapp.com
   _VITE_FIREBASE_PROJECT_ID: ch-bootcamp-496001
