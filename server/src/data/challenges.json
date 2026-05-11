@@ -16,12 +16,6 @@
         "type": "boolean",
         "title": "Sign up for SportsU",
         "description": "Create or confirm your SportsU account."
-      },
-      {
-        "id": "behavior-mon",
-        "type": "behavior",
-        "title": "Behavior Scores",
-        "description": "Sum your daily scores and upload the sheet."
       }
     ],
     "tue": [
