@@ -50,9 +50,11 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=server /app/node_modules ./node_modules
+COPY --from=server /app/shared ./shared
 COPY --from=server /app/server/dist ./server/dist
 COPY --from=server /app/server/src/data ./server/dist/data
 COPY --from=client /app/client/dist ./client/dist
+RUN node --input-type=module -e "await import('@bootcamp/shared/types')"
 ENV PORT=8080
 EXPOSE 8080
 CMD ["node", "server/dist/index.js"]
