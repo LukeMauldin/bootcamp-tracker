@@ -1,6 +1,14 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-t", "us-central1-docker.pkg.dev/$PROJECT_ID/app/bootcamp:$COMMIT_SHA", "."]
+    args:
+      - build
+      - --build-arg=VITE_FIREBASE_API_KEY=${_VITE_FIREBASE_API_KEY}
+      - --build-arg=VITE_FIREBASE_AUTH_DOMAIN=${_VITE_FIREBASE_AUTH_DOMAIN}
+      - --build-arg=VITE_FIREBASE_PROJECT_ID=${_VITE_FIREBASE_PROJECT_ID}
+      - --build-arg=VITE_FIREBASE_APP_ID=${_VITE_FIREBASE_APP_ID}
+      - -t
+      - us-central1-docker.pkg.dev/$PROJECT_ID/app/bootcamp:$COMMIT_SHA
+      - .
   - name: gcr.io/cloud-builders/docker
     args: ["push", "us-central1-docker.pkg.dev/$PROJECT_ID/app/bootcamp:$COMMIT_SHA"]
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -19,3 +27,8 @@ steps:
       - --set-env-vars=GCS_BUCKET=ch-bootcamp-496001-uploads,TZ=UTC
 options:
   logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _VITE_FIREBASE_API_KEY: SET_IN_CLOUD_BUILD_TRIGGER
+  _VITE_FIREBASE_AUTH_DOMAIN: ch-bootcamp-496001.firebaseapp.com
+  _VITE_FIREBASE_PROJECT_ID: ch-bootcamp-496001
+  _VITE_FIREBASE_APP_ID: SET_IN_CLOUD_BUILD_TRIGGER

@@ -54,7 +54,7 @@ Install dependencies:
 npm install
 ```
 
-Create `client/.env.local` for local Vite dev. The same public values are also committed in `client/.env.production` for Cloud Build:
+Create `client/.env.local` for local Vite dev. Use `client/.env.production.example` as the production value template:
 
 ```env
 VITE_FIREBASE_API_KEY=...
@@ -62,6 +62,15 @@ VITE_FIREBASE_AUTH_DOMAIN=ch-bootcamp-496001.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=ch-bootcamp-496001
 VITE_FIREBASE_APP_ID=...
 ```
+
+Production builds receive these same `VITE_FIREBASE_*` values through Docker build args in `cloudbuild.yaml`. Configure the Cloud Build trigger substitutions for:
+
+```text
+_VITE_FIREBASE_API_KEY
+_VITE_FIREBASE_APP_ID
+```
+
+`_VITE_FIREBASE_AUTH_DOMAIN` and `_VITE_FIREBASE_PROJECT_ID` default to the `ch-bootcamp-496001` Firebase project values in `cloudbuild.yaml`.
 
 Set local backend environment:
 
