@@ -20,7 +20,7 @@
     "seed": "npm run seed -w server",
     "set-coach": "npm run set-coach -w server",
     "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
-    "wipe-prod": "npm run wipe-prod -w server"
+    "wipe-prod": "npm run wipe-prod -w server --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
