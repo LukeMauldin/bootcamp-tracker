@@ -1,12 +1,35 @@
 import { Router } from "express";
 
-import type { LeaderboardRow, Submission, Team, UserProfile } from "@bootcamp/shared/types";
+import type {
+  LeaderboardDetail,
+  LeaderboardDetailAdjustment,
+  LeaderboardDetailPlayer,
+  LeaderboardDetailSubmission,
+  LeaderboardRow,
+  Submission,
+  Team,
+  UserProfile
+} from "@bootcamp/shared/types";
 
-import { loadProfile, verifyIdToken } from "../auth.js";
-import { asyncHandler } from "../http.js";
+import { loadProfile, type ProfileRequest, requireCoach, verifyIdToken } from "../auth.js";
+import { asyncHandler, HttpError } from "../http.js";
+import { challengeCatalog } from "../lib/catalog.js";
 import { db } from "../lib/firestore.js";
 
 export const leaderboardRouter = Router();
+
+interface PointAdjustment {
+  readonly teamId?: string | null;
+  readonly userId?: string | null;
+  readonly points?: number;
+  readonly reason?: string;
+}
+
+const challengeTitles = new Map(
+  Object.values(challengeCatalog.days)
+    .flatMap((challenges) => challenges)
+    .map((challenge) => [challenge.id, challenge.title] as const)
+);
 
 leaderboardRouter.get(
   "/",
@@ -62,5 +85,122 @@ leaderboardRouter.get(
       .map((row, index) => ({ ...row, rank: index + 1 }));
 
     res.json({ leaderboard: rows });
+  })
+);
+
+leaderboardRouter.get(
+  "/:teamId",
+  verifyIdToken,
+  loadProfile,
+  requireCoach,
+  asyncHandler<ProfileRequest>(async (req, res) => {
+    const teamId = req.params.teamId;
+    if (!teamId) {
+      throw new HttpError(400, "Missing team id");
+    }
+
+    const [teamSnapshot, usersSnapshot, submissionsSnapshot, adjustmentsSnapshot] = await Promise.all([
+      db.collection("teams").doc(teamId).get(),
+      db.collection("users").where("teamId", "==", teamId).get(),
+      db.collection("submissions").where("teamId", "==", teamId).get(),
+      db.collection("pointAdjustments").get()
+    ]);
+
+    if (!teamSnapshot.exists) {
+      throw new HttpError(404, "Team not found");
+    }
+
+    const team: Team = { id: teamSnapshot.id, ...(teamSnapshot.data() as Omit<Team, "id">) };
+    const users = usersSnapshot.docs.map((doc) => ({ uid: doc.id, ...(doc.data() as Omit<UserProfile, "uid">) }));
+    const usersById = new Map(users.map((user) => [user.uid, user]));
+    const submissions = submissionsSnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Submission, "id">) }));
+
+    const adjustments: LeaderboardDetailAdjustment[] = adjustmentsSnapshot.docs.flatMap((doc) => {
+      const adjustment = doc.data() as PointAdjustment;
+      if (typeof adjustment.points !== "number") {
+        return [];
+      }
+
+      const belongsToTeam = adjustment.teamId === teamId || (!adjustment.teamId && !!adjustment.userId && usersById.has(adjustment.userId));
+      if (!belongsToTeam) {
+        return [];
+      }
+
+      const user = adjustment.userId ? usersById.get(adjustment.userId) ?? null : null;
+      return [
+        {
+          id: doc.id,
+          teamId: adjustment.teamId ?? null,
+          userId: adjustment.userId ?? null,
+          playerName: user?.displayName ?? null,
+          points: adjustment.points,
+          reason: adjustment.reason ?? ""
+        }
+      ];
+    });
+
+    const submissionsByUser = new Map<string, Submission[]>();
+    for (const submission of submissions) {
+      const existing = submissionsByUser.get(submission.userId) ?? [];
+      existing.push(submission);
+      submissionsByUser.set(submission.userId, existing);
+    }
+
+    const adjustmentsByUser = new Map<string, number>();
+    for (const adjustment of adjustments) {
+      if (!adjustment.userId) {
+        continue;
+      }
+      adjustmentsByUser.set(adjustment.userId, (adjustmentsByUser.get(adjustment.userId) ?? 0) + adjustment.points);
+    }
+
+    const players: LeaderboardDetailPlayer[] = users
+      .map((user) => {
+        const userSubmissions = submissionsByUser.get(user.uid) ?? [];
+        const verifiedSubmissions = userSubmissions.filter((submission) => submission.status === "verified");
+        const pendingSubmissions = userSubmissions.filter((submission) => submission.status === "pending").length;
+        const rejectedSubmissions = userSubmissions.filter((submission) => submission.status === "rejected").length;
+        const submissionPoints = verifiedSubmissions.reduce((total, submission) => total + submission.pointsAwarded, 0);
+        const userAdjustments = adjustmentsByUser.get(user.uid) ?? 0;
+
+        return {
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          verifiedSubmissions: verifiedSubmissions.length,
+          pendingSubmissions,
+          rejectedSubmissions,
+          submissionPoints,
+          adjustments: userAdjustments,
+          totalPoints: submissionPoints + userAdjustments
+        };
+      })
+      .sort((left, right) => right.totalPoints - left.totalPoints || left.displayName.localeCompare(right.displayName));
+
+    const detailSubmissions: LeaderboardDetailSubmission[] = submissions
+      .map((submission) => ({
+        id: submission.id,
+        userId: submission.userId,
+        playerName: usersById.get(submission.userId)?.displayName ?? submission.userId,
+        challengeId: submission.challengeId,
+        challengeTitle: challengeTitles.get(submission.challengeId) ?? submission.challengeId,
+        day: submission.day,
+        dayDate: submission.dayDate,
+        status: submission.status,
+        value: submission.value,
+        basePoints: submission.basePoints,
+        bonusPoints: submission.bonusPoints,
+        pointsAwarded: submission.pointsAwarded
+      }))
+      .sort((left, right) => right.dayDate.localeCompare(left.dayDate) || left.playerName.localeCompare(right.playerName) || left.challengeTitle.localeCompare(right.challengeTitle));
+
+    const payload: LeaderboardDetail = {
+      team,
+      players,
+      submissions: detailSubmissions,
+      adjustments: adjustments.sort((left, right) => Math.abs(right.points) - Math.abs(left.points) || left.reason.localeCompare(right.reason))
+    };
+
+    res.json({ detail: payload });
   })
 );

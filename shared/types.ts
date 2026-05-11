@@ -68,6 +68,49 @@ export interface LeaderboardRow {
   readonly rank: number;
 }
 
+export interface LeaderboardDetailPlayer {
+  readonly uid: string;
+  readonly displayName: string;
+  readonly email: string;
+  readonly verifiedSubmissions: number;
+  readonly pendingSubmissions: number;
+  readonly rejectedSubmissions: number;
+  readonly submissionPoints: number;
+  readonly adjustments: number;
+  readonly totalPoints: number;
+}
+
+export interface LeaderboardDetailSubmission {
+  readonly id: string;
+  readonly userId: string;
+  readonly playerName: string;
+  readonly challengeId: string;
+  readonly challengeTitle: string;
+  readonly day: ChallengeDay;
+  readonly dayDate: string;
+  readonly status: SubmissionStatus;
+  readonly value: number | boolean | null;
+  readonly basePoints: number;
+  readonly bonusPoints: number;
+  readonly pointsAwarded: number;
+}
+
+export interface LeaderboardDetailAdjustment {
+  readonly id: string;
+  readonly teamId: string | null;
+  readonly userId: string | null;
+  readonly playerName: string | null;
+  readonly points: number;
+  readonly reason: string;
+}
+
+export interface LeaderboardDetail {
+  readonly team: Team;
+  readonly players: readonly LeaderboardDetailPlayer[];
+  readonly submissions: readonly LeaderboardDetailSubmission[];
+  readonly adjustments: readonly LeaderboardDetailAdjustment[];
+}
+
 export interface TeammateStatus {
   readonly uid: string;
   readonly displayName: string;

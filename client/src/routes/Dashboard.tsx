@@ -8,10 +8,22 @@ import { StatusPill } from "../components/StatusPill";
 import { apiForm, apiGet } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
+const challengeDayOrder = ["mon", "tue", "wed", "thu", "fri"] as const satisfies readonly ChallengeDay[];
+
+const challengeDayLabels: Record<ChallengeDay, string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday"
+};
+
 interface TodayPayload {
   readonly day: ChallengeDay | null;
   readonly dayDate: string;
   readonly timezone: string;
+  readonly challengeStartDate: string;
+  readonly days: Record<ChallengeDay, readonly Challenge[]>;
   readonly challenges: readonly Challenge[];
   readonly submissions: Record<string, Submission>;
 }
@@ -32,6 +44,20 @@ function currentStreak(submissions: readonly Submission[], asOf: string): number
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
   return count;
+}
+
+function challengeDate(startDate: string, dayIndex: number): string {
+  const date = new Date(`${startDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + dayIndex);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatChallengeDate(dayDate: string): string {
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${dayDate}T00:00:00.000Z`));
+}
+
+function submissionKey(day: ChallengeDay, challengeId: string): string {
+  return `${day}:${challengeId}`;
 }
 
 function ChallengeSubmit({
@@ -115,6 +141,10 @@ export function Dashboard() {
   }, []);
 
   const streak = useMemo(() => (today ? currentStreak(history, today.dayDate) : 0), [history, today?.dayDate]);
+  const submissionsByChallenge = useMemo(
+    () => new Map(history.map((submission) => [submissionKey(submission.day, submission.challengeId), submission] as const)),
+    [history]
+  );
 
   if (loading) {
     return <p className="text-sm text-gray-500">Loading dashboard</p>;
@@ -125,7 +155,7 @@ export function Dashboard() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-900">{team?.name ?? "Team"}</p>
-          <h1 className="text-3xl font-bold">Today&apos;s challenges</h1>
+          <h1 className="text-3xl font-bold">Weekly challenges</h1>
           <p className="mt-1 text-sm text-gray-500">{profile?.displayName}</p>
         </div>
         {streak >= 2 ? (
@@ -136,30 +166,55 @@ export function Dashboard() {
         ) : null}
       </header>
 
-      {!today?.day ? (
+      {!today ? (
         <section className="card p-5">
-          <h2 className="text-lg font-bold">No active challenge day</h2>
-          <p className="mt-1 text-sm text-gray-500">The dashboard will show the current day during the Monday through Friday challenge window.</p>
+          <h2 className="text-lg font-bold">Challenges unavailable</h2>
+          <p className="mt-1 text-sm text-gray-500">Refresh the dashboard to load this week&apos;s challenge list.</p>
         </section>
       ) : (
-        <section className="grid gap-4 md:grid-cols-2">
-          {today.challenges.map((challenge) => {
-            const submitted = today.submissions[challenge.id];
+        <section className="space-y-5">
+          {!today.day ? (
+            <div className="card p-4">
+              <h2 className="text-lg font-bold">No active challenge day</h2>
+              <p className="mt-1 text-sm text-gray-500">Submissions open during the Monday through Friday challenge window.</p>
+            </div>
+          ) : null}
+          {challengeDayOrder.map((day, index) => {
+            const isActiveDay = today.day === day;
+            const dayDate = challengeDate(today.challengeStartDate, index);
+            const challenges = today.days[day];
             return (
-              <article className="card p-5" key={challenge.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold">{challenge.title}</h2>
-                    <p className="mt-1 text-sm text-gray-500">{challenge.description}</p>
-                  </div>
-                  {submitted ? <StatusPill status={submitted.status} /> : null}
+              <div key={day}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-bold">
+                    {challengeDayLabels[day]} <span className="text-base font-semibold text-gray-500">{formatChallengeDate(dayDate)}</span>
+                  </h2>
+                  {isActiveDay ? <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold uppercase text-blue-900">Today</span> : null}
                 </div>
-                {submitted?.status === "verified" ? (
-                  <p className="mt-4 text-sm font-semibold text-emerald-700">Verified · {submitted.pointsAwarded} points</p>
-                ) : (
-                  <ChallengeSubmit challenge={challenge} submitted={submitted} onSubmitted={load} />
-                )}
-              </article>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {challenges.map((challenge) => {
+                    const submitted = submissionsByChallenge.get(submissionKey(day, challenge.id));
+                    return (
+                      <article className="card p-5" key={challenge.id}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-lg font-bold">{challenge.title}</h3>
+                            <p className="mt-1 text-sm text-gray-500">{challenge.description}</p>
+                          </div>
+                          {submitted ? <StatusPill status={submitted.status} /> : null}
+                        </div>
+                        {submitted?.status === "verified" ? (
+                          <p className="mt-4 text-sm font-semibold text-emerald-700">Verified · {submitted.pointsAwarded} points</p>
+                        ) : isActiveDay ? (
+                          <ChallengeSubmit challenge={challenge} submitted={submitted} onSubmitted={load} />
+                        ) : (
+                          <p className="mt-4 text-sm font-semibold text-gray-500">Submissions open on {challengeDayLabels[day]} only.</p>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </section>

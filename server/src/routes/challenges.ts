@@ -19,6 +19,8 @@ challengesRouter.get(
         day: null,
         dayDate: current.dayDate,
         timezone: current.timezone,
+        challengeStartDate: challengeCatalog.challengeStartDate,
+        days: challengeCatalog.days,
         challenges: [],
         submissions: {}
       });
@@ -39,6 +41,8 @@ challengesRouter.get(
       day: current.day,
       dayDate: current.dayDate,
       timezone: current.timezone,
+      challengeStartDate: challengeCatalog.challengeStartDate,
+      days: challengeCatalog.days,
       challenges: challengeCatalog.days[current.day],
       submissions
     });
