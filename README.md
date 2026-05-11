@@ -1,17 +1,52 @@
 # Lady Sentinels Finish Strong Bootcamp Tracker
 
-Mobile-first challenge tracker for a 5-day basketball team bootcamp. One Cloud Run service serves the built React SPA and the Express `/api`.
+Mobile-first web app for a 5-day basketball team challenge. Players register with a team join code, submit daily challenge evidence, upload verification photos, and track team standings. One coach verifies submissions and manages scoring.
+
+The app is intentionally deployed as one Cloud Run service: Express serves the built React SPA and the `/api` routes.
 
 ## Stack
 
-- React 18, Vite, TypeScript, Tailwind CSS
-- Node.js 22, Express, TypeScript
-- Firebase Authentication with email/password
-- Firestore Native mode, accessed only through the backend
-- Private Google Cloud Storage bucket for verification photos
-- Cloud Build to Artifact Registry to Cloud Run
+| Layer | Choice |
+| --- | --- |
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS |
+| Backend | Node.js 22, Express, TypeScript |
+| Auth | Firebase Authentication, email/password |
+| Database | Firestore Native mode |
+| Object storage | Private Google Cloud Storage bucket |
+| Runtime | Cloud Run |
+| Build/deploy | Cloud Build, Artifact Registry |
 
-## Local Development
+## Project Resources
+
+- GCP project: `ch-bootcamp-496001`
+- Region: `us-central1`
+- Upload bucket: `ch-bootcamp-496001-uploads`
+- Artifact Registry repo: `app`
+- Cloud Run service: `bootcamp-tracker`
+- Runtime service account: `bootcamp-runtime@ch-bootcamp-496001.iam.gserviceaccount.com`
+
+## Repository Layout
+
+```text
+.
+├── client/                  # Vite React SPA
+│   └── src/
+├── server/                  # Express API and static SPA serving
+│   └── src/
+│       ├── data/            # challenges.json
+│       ├── lib/             # Firestore, GCS, day helpers
+│       ├── routes/          # API route modules
+│       └── scripts/         # seed-teams and set-coach
+├── shared/                  # Shared TypeScript types
+├── scripts/provision-gcp.zsh
+├── Dockerfile
+├── cloudbuild.yaml
+├── firebase.json
+├── firestore.rules
+└── package.json
+```
+
+## Local Setup
 
 Install dependencies:
 
@@ -19,39 +54,54 @@ Install dependencies:
 npm install
 ```
 
-Create or update `client/.env.production` with the Firebase public web config. For local Vite, either export the same variables or create `client/.env.local`.
+Create `client/.env.local` for local Vite dev. The same public values are also committed in `client/.env.production` for Cloud Build:
 
-Run both apps:
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=ch-bootcamp-496001.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=ch-bootcamp-496001
+VITE_FIREBASE_APP_ID=...
+```
+
+Set local backend environment:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
+export GCS_BUCKET=ch-bootcamp-496001-uploads
+```
+
+Start both apps:
 
 ```bash
 npm run dev
 ```
 
-The Vite dev server runs on `http://localhost:5173` and proxies `/api` to the Express server on `http://localhost:8080`.
+URLs:
 
-Backend local runs use Application Default Credentials:
+- Vite app: `http://localhost:5173`
+- Express API: `http://localhost:8080`
+
+Use `http://localhost:5173` during development. If you use `http://localhost:8080`, Express serves the built `client/dist`, so run `npm run build` first or you may see stale Firebase config.
+
+## GCP Provisioning
+
+Most project setup is captured in:
 
 ```bash
-gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
-export GCS_BUCKET=ch-bootcamp-496001-uploads
-npm run dev -w server
+./scripts/provision-gcp.zsh
 ```
 
-## One-Time GCP Setup
+The script enables required APIs, attaches Firebase, checks Firebase Auth initialization, creates Firestore/GCS/Artifact Registry resources, creates service accounts, applies IAM, writes Firebase web config, and attempts to create the Cloud Build trigger.
 
-1. Create a GCP project and link billing.
-2. Enable `run.googleapis.com`, `cloudbuild.googleapis.com`, `artifactregistry.googleapis.com`, `firestore.googleapis.com`, `storage.googleapis.com`, `firebase.googleapis.com`, and `identitytoolkit.googleapis.com`.
-3. Add Firebase to the project and enable Email/Password sign-in.
-4. Create Firestore in Native mode.
-5. Apply Firestore rules that deny all client access.
-6. Create a private, uniform-access bucket named `ch-bootcamp-496001-uploads`.
-7. Create an Artifact Registry Docker repository named `app` in `us-central1`.
-8. Create `bootcamp-runtime@PROJECT_ID.iam.gserviceaccount.com` with Firestore, bucket object admin, Firebase Auth admin, and service-account token creator permissions.
-9. Connect the GitHub repo to Cloud Build and create a trigger for `main` using `cloudbuild.yaml`.
-10. Grant the Cloud Build service account Cloud Run admin, Artifact Registry writer, and service-account user on the runtime service account.
+Firebase Authentication may still require one manual console step:
 
-Firestore rules:
+1. Open Firebase Console for `ch-bootcamp-496001`.
+2. Go to **Build → Authentication**.
+3. Click **Get started**.
+4. Enable **Email/Password** sign-in.
+5. Rerun `./scripts/provision-gcp.zsh`.
+
+Firestore rules intentionally deny all client access:
 
 ```js
 rules_version = '2';
@@ -64,68 +114,143 @@ service cloud.firestore {
 }
 ```
 
-## Bootstrap
+All Firestore reads and writes go through Express using the Admin SDK.
 
-After credentials and Firestore are ready:
+## Bootstrap Data
+
+Seed teams:
 
 ```bash
 export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
 npm run seed
-npm run set-coach -- coach@example.com
 ```
 
-The coach must sign out and sign back in after the custom claim is set.
+Join codes:
 
-Seeded join codes:
-
-- Lightning: `LADY-NAVY-11`
-- Comets: `LADY-GOLD-22`
-- Storm: `LADY-RED-33`
-- Phoenix: `LADY-WHITE-44`
-- Titans: `LADY-GRAY-55`
+| Team | Join code |
+| --- | --- |
+| Lightning | `LADY-NAVY-11` |
+| Comets | `LADY-GOLD-22` |
+| Storm | `LADY-RED-33` |
+| Phoenix | `LADY-WHITE-44` |
+| Titans | `LADY-GRAY-55` |
 
 ## Coach Access
 
-Coach access is a Firebase custom claim plus a mirror field in `users/{uid}` for display.
-
-1. Register the coach through the app with the intended email and any valid join code.
-2. Grant the custom claim:
+Coach access is controlled by a Firebase custom claim:
 
 ```bash
 export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
 npm run set-coach -- lukemauldin@gmail.com
 ```
 
-3. Sign out and sign back in. The `/admin` route appears only after the refreshed ID token includes `role: "coach"`.
+The user must sign out and sign back in after the claim is set. The `/admin` route appears only after the refreshed ID token includes `role: "coach"`.
 
-## Verification
+## Challenge Dates
 
-```bash
-npm run typecheck
-npm run build
-docker build -t bootcamp-tracker .
-docker run --rm -p 8080:8080 -e GCS_BUCKET=ch-bootcamp-496001-uploads bootcamp-tracker
-```
+The current challenge day is computed from `server/src/data/challenges.json`. Cloud Run runs in UTC, so server code uses the configured challenge timezone rather than `new Date()` directly.
 
-Use `CHALLENGE_DATE_OVERRIDE=2026-05-11` locally when testing the Monday challenge flow outside the event window.
-
-## Day-by-Day QA
-
-Run the app against the real Firebase/GCP project, changing `CHALLENGE_DATE_OVERRIDE` to simulate each event day:
+For QA, simulate days with:
 
 ```bash
-export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
-export GCS_BUCKET=ch-bootcamp-496001-uploads
 export CHALLENGE_DATE_OVERRIDE=2026-05-11
 npm run dev
 ```
 
-Use these dates:
+Restart the server after changing the override.
 
-- Monday: `2026-05-11`
-- Tuesday: `2026-05-12`
-- Wednesday: `2026-05-13`
-- Thursday: `2026-05-14`
-- Friday: `2026-05-15`
+| Day | Override date |
+| --- | --- |
+| Monday | `2026-05-11` |
+| Tuesday | `2026-05-12` |
+| Wednesday | `2026-05-13` |
+| Thursday | `2026-05-14` |
+| Friday | `2026-05-15` |
 
-For each date, verify registration/login, today's challenge list, boolean or behavior submission, photo upload on photo days, coach verification, leaderboard point changes, and the streak badge after two consecutive verified days.
+## QA Checklist
+
+Run against the real project. Database reset is optional and not required for normal QA passes.
+
+- Register a player with a valid join code.
+- Confirm invalid join code registration fails.
+- Confirm player login and `/api/me` profile loading.
+- Confirm Monday boolean and behavior submissions.
+- Confirm Tuesday, Wednesday, and Thursday photo submissions.
+- Confirm Friday behavior submission.
+- Confirm player cannot access `/admin`.
+- Confirm coach can access `/admin`.
+- Confirm coach can verify for 5 points.
+- Confirm coach can verify with 2 bonus points for 7 total.
+- Confirm coach can reject and points stay 0.
+- Confirm coach can add a negative manual adjustment.
+- Confirm coach can move a player to another team.
+- Confirm leaderboard includes only verified submissions plus adjustments.
+- Confirm streak badge appears after two consecutive verified days.
+- Confirm photo access works for submitter and coach only.
+
+## Validation
+
+Run after source changes:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+Container check:
+
+```bash
+docker build -t bootcamp-tracker .
+docker run --rm -p 8080:8080 \
+  -e GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001 \
+  -e GCS_BUCKET=ch-bootcamp-496001-uploads \
+  bootcamp-tracker
+```
+
+## Deployment
+
+Push to `main` after the Cloud Build GitHub trigger is connected. `cloudbuild.yaml` will:
+
+1. Build the Docker image.
+2. Push it to Artifact Registry.
+3. Deploy `bootcamp-tracker` to Cloud Run.
+
+Cloud Run is deployed with `--allow-unauthenticated`; application access is enforced by Firebase ID tokens in the Express API.
+
+## Troubleshooting
+
+### `auth/api-key-not-valid`
+
+The browser is using stale or placeholder Firebase config.
+
+- Check `client/.env.local`.
+- Restart Vite.
+- If serving from `8080`, rerun `npm run build`.
+
+### `auth/configuration-not-found`
+
+Firebase Authentication is not initialized.
+
+- Open Firebase Console.
+- Go to **Authentication → Get started**.
+- Enable **Email/Password**.
+
+### Firestore `5 NOT_FOUND`
+
+The Firestore database probably does not exist or the Admin SDK is targeting the wrong project.
+
+```bash
+gcloud firestore databases list --project ch-bootcamp-496001
+export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
+```
+
+### Port `8080` already in use
+
+```bash
+lsof -nP -iTCP:8080 -sTCP:LISTEN
+kill <pid>
+```
+
+### Vite env changes not reflected
+
+Vite reads env files at startup. Stop and restart `npm run dev`.

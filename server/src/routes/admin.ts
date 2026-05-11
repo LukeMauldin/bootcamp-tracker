@@ -24,6 +24,10 @@ const moveTeamBody = z.object({
   teamId: z.string().min(1)
 });
 
+function timestampMillis(value: unknown): number {
+  return typeof value === "object" && value !== null && "toMillis" in value && typeof value.toMillis === "function" ? value.toMillis() : 0;
+}
+
 export const adminRouter = Router();
 
 adminRouter.use(verifyIdToken, loadProfile, requireCoach);
@@ -43,17 +47,24 @@ adminRouter.get(
     }
 
     const [submissionsSnapshot, usersSnapshot, teamsSnapshot] = await Promise.all([
-      query.orderBy("submittedAt", "desc").limit(100).get(),
+      query.get(),
       db.collection("users").get(),
       db.collection("teams").get()
     ]);
 
     const users = new Map(usersSnapshot.docs.map((doc) => [doc.id, { uid: doc.id, ...(doc.data() as Omit<UserProfile, "uid">) }]));
     const teams = new Map(teamsSnapshot.docs.map((doc) => [doc.id, { id: doc.id, ...(doc.data() as Omit<Team, "id">) }]));
+    const submissions = submissionsSnapshot.docs
+      .map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Submission, "id">) }))
+      .sort((left, right) => {
+        const leftMillis = timestampMillis(left.submittedAt);
+        const rightMillis = timestampMillis(right.submittedAt);
+        return rightMillis - leftMillis;
+      })
+      .slice(0, 100);
 
     res.json({
-      submissions: submissionsSnapshot.docs.map((doc) => {
-        const submission = { id: doc.id, ...(doc.data() as Omit<Submission, "id">) };
+      submissions: submissions.map((submission) => {
         return {
           ...submission,
           user: users.get(submission.userId) ?? null,
