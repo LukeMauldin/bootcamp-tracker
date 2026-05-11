@@ -1,5 +1,6 @@
 import { Check, ChevronRight, Flame, Upload } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 
 import type { Challenge, ChallengeDay, Submission, TeammateStatus } from "@bootcamp/shared/types";
 
@@ -8,6 +9,8 @@ import { StatusPill } from "../components/StatusPill";
 import { apiForm, apiGet } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
+const MAX_PHOTO_UPLOAD_BYTES = 8 * 1024 * 1024;
+const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/avif";
 const challengeDayOrder = ["mon", "tue", "wed", "thu", "fri"] as const satisfies readonly ChallengeDay[];
 
 const challengeDayLabels: Record<ChallengeDay, string> = {
@@ -74,6 +77,19 @@ function ChallengeSubmit({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
+    const selectedFile = event.target.files?.[0] ?? null;
+    if (selectedFile && selectedFile.size > MAX_PHOTO_UPLOAD_BYTES) {
+      setFile(null);
+      setError("Photo must be 8 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    setFile(selectedFile);
+    setError(null);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setBusy(true);
@@ -107,7 +123,7 @@ function ChallengeSubmit({
         <input className="field" inputMode="decimal" placeholder="Behavior score" value={value} onChange={(event) => setValue(event.target.value)} required />
       ) : null}
       {challenge.type !== "boolean" ? (
-        <input className="field file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold" type="file" accept="image/*" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required={challenge.type === "photo"} />
+        <input className="field file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold" type="file" accept={PHOTO_ACCEPT} onChange={handleFileChange} required={challenge.type === "photo"} />
       ) : null}
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       <button className={submitted ? "btn-secondary w-full" : "btn-primary w-full"} disabled={busy}>

@@ -10,12 +10,26 @@ import { challengeCatalog, getChallenge } from "../lib/catalog.js";
 import { getCurrentChallengeDay } from "../lib/day.js";
 import { db, FieldValue } from "../lib/firestore.js";
 import { createSignedReadUrl, uploadSubmissionPhoto } from "../lib/gcs.js";
+import {
+  detectSupportedPhotoMimeType,
+  isSupportedPhotoMimeType,
+  MAX_PHOTO_UPLOAD_BYTES,
+  PHOTO_UPLOAD_TYPE_ERROR
+} from "../lib/photoValidation.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 8 * 1024 * 1024,
+    fileSize: MAX_PHOTO_UPLOAD_BYTES,
     files: 1
+  },
+  fileFilter: (_req, file, callback) => {
+    if (isSupportedPhotoMimeType(file.mimetype)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new HttpError(400, PHOTO_UPLOAD_TYPE_ERROR));
   }
 });
 
@@ -63,6 +77,10 @@ submissionsRouter.post(
 
     if (challenge.type === "photo" && !req.file) {
       throw new HttpError(400, "Photo is required for this challenge");
+    }
+
+    if (req.file && !detectSupportedPhotoMimeType(req.file.buffer)) {
+      throw new HttpError(400, PHOTO_UPLOAD_TYPE_ERROR);
     }
 
     const photoPath = req.file

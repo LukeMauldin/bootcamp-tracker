@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import cors from "cors";
 import express from "express";
+import multer from "multer";
 import { ZodError } from "zod";
 
 import { adminRouter } from "./routes/admin.js";
@@ -14,6 +15,7 @@ import { registerRouter } from "./routes/register.js";
 import { submissionsRouter } from "./routes/submissions.js";
 import { teamsRouter } from "./routes/teams.js";
 import { HttpError } from "./http.js";
+import { PHOTO_UPLOAD_SIZE_ERROR } from "./lib/photoValidation.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8080);
@@ -57,6 +59,16 @@ if (clientDist) {
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof ZodError) {
     res.status(400).json({ error: "Invalid request", details: err.flatten() });
+    return;
+  }
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: PHOTO_UPLOAD_SIZE_ERROR });
+      return;
+    }
+
+    res.status(400).json({ error: "Invalid file upload" });
     return;
   }
 
