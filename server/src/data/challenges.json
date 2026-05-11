@@ -26,16 +26,23 @@
     ],
     "tue": [
       {
-        "id": "clean-room",
+        "id": "clean-room-before",
         "type": "photo",
-        "title": "Clean Your Room",
-        "description": "Clean and organize your room:",
+        "title": "Clean Your Room — Before",
+        "description": "Take a photo of your room BEFORE you clean it.",
+        "uploadInstructions": "Upload the 'before' picture to the app."
+      },
+      {
+        "id": "clean-room-after",
+        "type": "photo",
+        "title": "Clean Your Room — After",
+        "description": "Clean and organize your room, then take an 'after' photo:",
         "checklist": [
           "Make your bed",
           "Clean surfaces",
           "Straighten up belongings"
         ],
-        "uploadInstructions": "Upload a before and after picture to the app.",
+        "uploadInstructions": "Upload the 'after' picture to the app.",
         "bonusDescription": "Include your mom or parent in the after picture with your clean room.",
         "bonusAvailable": true
       },

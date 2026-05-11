@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import type { Submission, TeammateStatus, UserProfile } from "@bootcamp/shared/types";
+import type { Submission, TeammateChallengeCompletion, TeammateStatus, UserProfile } from "@bootcamp/shared/types";
 
 import { loadProfile, type ProfileRequest, requireCoach, verifyIdToken } from "../auth.js";
 import { asyncHandler } from "../http.js";
@@ -57,23 +57,35 @@ teamsRouter.get(
       }
     }
 
-    const totalToday = current.day ? challengeCatalog.days[current.day].length : 0;
+    const dayChallenges = current.day ? challengeCatalog.days[current.day] : [];
+    const totalToday = dayChallenges.length;
     const statuses: TeammateStatus[] = teammates.map((teammate) => {
       const submissions = submissionsByUser.get(teammate.uid) ?? [];
+      const todaySubmissions = submissions.filter((submission) => submission.dayDate === current.dayDate);
       const completedToday = current.dayDate
         ? new Set(
-            submissions
-              .filter((submission) => submission.dayDate === current.dayDate && submission.status !== "rejected")
+            todaySubmissions
+              .filter((submission) => submission.status !== "rejected")
               .map((submission) => submission.challengeId)
           ).size
         : 0;
+
+      const todayCompletions: TeammateChallengeCompletion[] = dayChallenges.map((challenge) => {
+        const submission = todaySubmissions.find((item) => item.challengeId === challenge.id);
+        return {
+          challengeId: challenge.id,
+          title: challenge.title,
+          status: submission?.status ?? "missing"
+        };
+      });
 
       return {
         uid: teammate.uid,
         displayName: teammate.displayName,
         completedToday,
         totalToday,
-        streakDays: currentStreak(submissions, current.dayDate)
+        streakDays: currentStreak(submissions, current.dayDate),
+        todayCompletions
       };
     });
 

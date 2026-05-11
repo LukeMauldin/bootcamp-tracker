@@ -1,10 +1,11 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import multer from "multer";
 import { z } from "zod";
 
 import type { Submission } from "@bootcamp/shared/types";
 
-import { loadProfile, type ProfileRequest, verifyIdToken } from "../auth.js";
+import { type AuthedRequest, loadProfile, type ProfileRequest, verifyIdToken } from "../auth.js";
 import { asyncHandler, HttpError } from "../http.js";
 import { challengeCatalog, getChallenge } from "../lib/catalog.js";
 import { areAllChallengeDaysOpen, challengeDays, getChallengeDayDate, getCurrentChallengeDay } from "../lib/day.js";
@@ -39,11 +40,21 @@ const submissionBody = z.object({
   value: z.union([z.string(), z.number(), z.boolean()]).optional()
 });
 
+const submissionWriteLimiter = rateLimit({
+  windowMs: 60 * 60_000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as AuthedRequest).user?.uid ?? req.ip ?? "anon",
+  message: { error: "Too many submissions. Try again later." }
+});
+
 export const submissionsRouter = Router();
 
 submissionsRouter.post(
   "/",
   verifyIdToken,
+  submissionWriteLimiter,
   loadProfile,
   upload.single("photo"),
   asyncHandler<ProfileRequest>(async (req, res) => {
@@ -81,7 +92,7 @@ submissionsRouter.post(
       value = numericValue;
     }
 
-    if (challenge.type === "photo" && !req.file) {
+    if ((challenge.type === "photo" || challenge.type === "behavior") && !req.file) {
       throw new HttpError(400, "Photo is required for this challenge");
     }
 

@@ -23,7 +23,8 @@ steps:
       - --allow-unauthenticated
       - --service-account=bootcamp-runtime@$PROJECT_ID.iam.gserviceaccount.com
       - --min-instances=0
-      - --max-instances=3
+      # Intentional: single-instance cap to control cost and avoid concurrent Firestore writes for this 5-day event.
+      - --max-instances=1
       - --set-env-vars=GCS_BUCKET=ch-bootcamp-496001-uploads,TZ=UTC
 options:
   logging: CLOUD_LOGGING_ONLY

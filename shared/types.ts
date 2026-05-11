@@ -126,10 +126,17 @@ export interface LeaderboardDetail {
   readonly adjustments: readonly LeaderboardDetailAdjustment[];
 }
 
+export interface TeammateChallengeCompletion {
+  readonly challengeId: string;
+  readonly title: string;
+  readonly status: SubmissionStatus | "missing";
+}
+
 export interface TeammateStatus {
   readonly uid: string;
   readonly displayName: string;
   readonly completedToday: number;
   readonly totalToday: number;
   readonly streakDays: number;
+  readonly todayCompletions: readonly TeammateChallengeCompletion[];
 }

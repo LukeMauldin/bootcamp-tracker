@@ -1,5 +1,5 @@
 import { Check, HelpCircle, RefreshCw, Send, X } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import type { Submission, SubmissionStatus, Team, TeamDivision, UserProfile } from "@bootcamp/shared/types";
 
@@ -34,6 +34,43 @@ function teamsByDivision(teams: readonly Team[]): Array<readonly [TeamDivision, 
     .filter(([, divisionTeams]) => divisionTeams.length > 0);
 }
 
+function groupByDayThenPlayer(
+  submissions: readonly AdminSubmission[]
+): Array<readonly [string, ReadonlyArray<readonly [string, readonly AdminSubmission[]]>]> {
+  const byDay = new Map<string, AdminSubmission[]>();
+  for (const submission of submissions) {
+    const list = byDay.get(submission.dayDate) ?? [];
+    list.push(submission);
+    byDay.set(submission.dayDate, list);
+  }
+
+  return [...byDay.entries()]
+    .sort(([left], [right]) => right.localeCompare(left))
+    .map(([dayDate, daySubs]) => {
+      const byPlayer = new Map<string, AdminSubmission[]>();
+      for (const submission of daySubs) {
+        const list = byPlayer.get(submission.userId) ?? [];
+        list.push(submission);
+        byPlayer.set(submission.userId, list);
+      }
+      const playerEntries = [...byPlayer.entries()].sort(([, a], [, b]) => {
+        const left = a[0]?.user?.displayName ?? a[0]?.userId ?? "";
+        const right = b[0]?.user?.displayName ?? b[0]?.userId ?? "";
+        return left.localeCompare(right);
+      });
+      return [dayDate, playerEntries] as const;
+    });
+}
+
+function formatDayDate(dayDate: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(`${dayDate}T00:00:00.000Z`));
+}
+
 function HelpTooltip({ text }: { readonly text: string }) {
   return (
     <span className="group relative inline-flex">
@@ -60,6 +97,7 @@ export function Admin() {
   const [adjustmentPoints, setAdjustmentPoints] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
   const groupedTeams = teamsByDivision(teams);
+  const groupedSubmissions = useMemo(() => groupByDayThenPlayer(submissions), [submissions]);
 
   async function load(): Promise<void> {
     const query = status === "all" ? "" : `?status=${status}`;
@@ -204,80 +242,118 @@ export function Admin() {
             </select>
           </div>
         </div>
-        <div className="space-y-4">
-          {submissions.map((submission) => {
-            const basePoints = submission.basePoints;
-            const bonusTotal = submission.basePoints + submission.bonusPointValue;
-            return (
-              <article className="card p-4" key={submission.id}>
-                <div className="flex flex-col gap-4 md:flex-row md:items-start">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3">
+        <div className="space-y-6">
+          {groupedSubmissions.length === 0 ? (
+            <p className="card p-4 text-sm text-gray-500">No submissions match the selected filter.</p>
+          ) : null}
+          {groupedSubmissions.map(([dayDate, playerEntries]) => (
+            <section key={dayDate} className="space-y-3">
+              <header className="flex items-baseline justify-between gap-3 border-b border-gray-200 pb-2">
+                <h3 className="text-lg font-bold text-slate-900">{formatDayDate(dayDate)}</h3>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{dayDate}</span>
+              </header>
+              {playerEntries.map(([userId, playerSubs]) => {
+                const firstSub = playerSubs[0];
+                if (!firstSub) {
+                  return null;
+                }
+                const displayName = firstSub.user?.displayName ?? firstSub.userId;
+                const teamName = firstSub.team?.name ?? firstSub.teamId;
+                return (
+                  <div key={userId} className="card p-4">
+                    <div className="mb-3 flex items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 font-bold text-white">
-                        {(submission.user?.displayName ?? "?").slice(0, 1).toUpperCase()}
+                        {displayName.slice(0, 1).toUpperCase()}
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-bold">{submission.user?.displayName ?? submission.userId}</p>
-                        <p className="text-sm text-gray-500">
-                          {submission.team?.name ?? submission.teamId} · {submission.challengeId} · {submission.dayDate}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold">{displayName}</p>
+                        <p className="text-sm text-gray-500">{teamName}</p>
                       </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <StatusPill status={submission.status} />
-                      {submission.value !== null ? <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">value {String(submission.value)}</span> : null}
-                    </div>
-                    {submission.photoPath ? (
-                      <div className="mt-3 max-w-xs">
-                        <PhotoPreview submissionId={submission.id} />
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 md:w-72 md:grid-cols-1">
-                    <p className="text-xs font-medium leading-relaxed text-gray-500 sm:col-span-2 md:col-span-1">
-                      {submission.bonusAvailable
-                        ? `Verify ${basePoints} awards base points. Verify ${bonusTotal} adds the coach bonus.`
-                        : `Verify awards ${basePoints} base points.`}
-                    </p>
-                    <button className="btn-primary" onClick={() => void verify(submission.id, true, 0)} title={`Approve this submission for its base ${basePoints} points.`}>
-                      <Check size={16} />
-                      Verify {basePoints} pts
-                    </button>
-                    {submission.bonusAvailable ? (
-                      <button
-                        className="btn-secondary"
-                        onClick={() => void verify(submission.id, true, submission.bonusPointValue)}
-                        title={`Approve this submission with a ${submission.bonusPointValue}-point bonus, for ${bonusTotal} total points.`}
-                      >
-                        <Check size={16} />
-                        Verify {bonusTotal} pts
-                      </button>
-                    ) : null}
-                    <button className="btn-secondary" onClick={() => void verify(submission.id, false)} title="Reject this submission and award 0 points.">
-                      <X size={16} />
-                      Reject
-                    </button>
-                    <select
-                      className="field"
-                      value={submission.user?.teamId ?? ""}
-                      onChange={(event) => submission.user && void moveUser(submission.user.uid, event.target.value)}
-                      title="Move this player and their existing submissions to another team."
-                    >
-                      {groupedTeams.map(([division, divisionTeams]) => (
-                        <optgroup key={division} label={teamDivisionLabels[division]}>
-                          {divisionTeams.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              Move: {team.name}
-                            </option>
+                      {firstSub.user ? (
+                        <select
+                          className="field max-w-44"
+                          value={firstSub.user.teamId}
+                          onChange={(event) => firstSub.user && void moveUser(firstSub.user.uid, event.target.value)}
+                          title="Move this player and their existing submissions to another team."
+                        >
+                          {groupedTeams.map(([division, divisionTeams]) => (
+                            <optgroup key={division} label={teamDivisionLabels[division]}>
+                              {divisionTeams.map((team) => (
+                                <option key={team.id} value={team.id}>
+                                  Move: {team.name}
+                                </option>
+                              ))}
+                            </optgroup>
                           ))}
-                        </optgroup>
-                      ))}
-                    </select>
+                        </select>
+                      ) : null}
+                    </div>
+                    <div className="space-y-3 border-l-2 border-gray-100 pl-4">
+                      {playerSubs.map((submission) => {
+                        const basePoints = submission.basePoints;
+                        const bonusTotal = submission.basePoints + submission.bonusPointValue;
+                        return (
+                          <article key={submission.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-slate-900">{submission.challengeId}</p>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <StatusPill status={submission.status} />
+                                  {submission.value !== null ? (
+                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                                      value {String(submission.value)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {submission.photoPath ? (
+                                  <div className="mt-3 max-w-xs">
+                                    <PhotoPreview submissionId={submission.id} />
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-2 md:w-64 md:grid-cols-1">
+                                <p className="text-xs font-medium leading-relaxed text-gray-500 sm:col-span-2 md:col-span-1">
+                                  {submission.bonusAvailable
+                                    ? `Verify ${basePoints} awards base points. Verify ${bonusTotal} adds the coach bonus.`
+                                    : `Verify awards ${basePoints} base points.`}
+                                </p>
+                                <button
+                                  className="btn-primary"
+                                  onClick={() => void verify(submission.id, true, 0)}
+                                  title={`Approve this submission for its base ${basePoints} points.`}
+                                >
+                                  <Check size={16} />
+                                  Verify {basePoints} pts
+                                </button>
+                                {submission.bonusAvailable ? (
+                                  <button
+                                    className="btn-secondary"
+                                    onClick={() => void verify(submission.id, true, submission.bonusPointValue)}
+                                    title={`Approve this submission with a ${submission.bonusPointValue}-point bonus, for ${bonusTotal} total points.`}
+                                  >
+                                    <Check size={16} />
+                                    Verify {bonusTotal} pts
+                                  </button>
+                                ) : null}
+                                <button
+                                  className="btn-secondary"
+                                  onClick={() => void verify(submission.id, false)}
+                                  title="Reject this submission and award 0 points."
+                                >
+                                  <X size={16} />
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              </article>
-            );
-          })}
+                );
+              })}
+            </section>
+          ))}
         </div>
       </section>
     </div>

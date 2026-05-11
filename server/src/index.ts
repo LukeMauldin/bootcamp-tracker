@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import cors from "cors";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import multer from "multer";
 import { ZodError } from "zod";
 
@@ -20,7 +21,32 @@ import { PHOTO_UPLOAD_SIZE_ERROR } from "./lib/photoValidation.js";
 const app = express();
 const port = Number(process.env.PORT ?? 8080);
 
-app.use(cors());
+app.set("trust proxy", 1);
+
+const corsOrigins = (process.env.CORS_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+if (corsOrigins.length > 0) {
+  app.use(cors({ origin: corsOrigins, credentials: true }));
+}
+
+const globalApiLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 300,
+  standardHeaders: "draft-7",
+  legacyHeaders: false
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60_000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many registration attempts. Try again later." }
+});
+
+app.use("/api", globalApiLimiter);
 app.use("/api", express.json({ limit: "1mb" }));
 app.use("/api", express.urlencoded({ extended: false }));
 
@@ -28,7 +54,7 @@ app.get("/api/healthz", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.use("/api/register", registerRouter);
+app.use("/api/register", registerLimiter, registerRouter);
 app.use("/api/me", meRouter);
 app.use("/api/challenges", challengesRouter);
 app.use("/api/submissions", submissionsRouter);

@@ -152,7 +152,7 @@ function ChallengeSubmit({
         <input className="field" inputMode="decimal" placeholder="Behavior score" value={value} onChange={(event) => setValue(event.target.value)} required />
       ) : null}
       {challenge.type !== "boolean" ? (
-        <input className="field file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold" type="file" accept={PHOTO_ACCEPT} onChange={handleFileChange} required={challenge.type === "photo"} />
+        <input className="field file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold" type="file" accept={PHOTO_ACCEPT} onChange={handleFileChange} required={challenge.type === "photo" || challenge.type === "behavior"} />
       ) : null}
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       <button className={submitted ? "btn-secondary w-full" : "btn-primary w-full"} disabled={busy}>
@@ -283,6 +283,24 @@ export function Dashboard() {
                   {teammate.completedToday}/{teammate.totalToday} submitted today
                 </p>
               </div>
+              {teammate.todayCompletions.length > 0 ? (
+                <div className="flex items-center gap-1" aria-label="Today's challenges">
+                  {teammate.todayCompletions.map((completion) => (
+                    <span
+                      key={completion.challengeId}
+                      title={`${completion.title}: ${completion.status}`}
+                      aria-label={`${completion.title} ${completion.status}`}
+                      className={`h-2.5 w-2.5 rounded-full ${
+                        completion.status === "verified"
+                          ? "bg-emerald-500"
+                          : completion.status === "pending"
+                            ? "bg-amber-500"
+                            : "bg-red-500"
+                      }`}
+                    />
+                  ))}
+                </div>
+              ) : null}
               {teammate.streakDays >= 2 ? <span className="rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-700">🔥 {teammate.streakDays}</span> : null}
               <ChevronRight className="text-gray-400" size={18} />
             </div>
