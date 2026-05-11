@@ -58,6 +58,9 @@ submissionsRouter.post(
   loadProfile,
   upload.single("photo"),
   asyncHandler<ProfileRequest>(async (req, res) => {
+    if (req.profile.role === "coach") {
+      throw new HttpError(403, "Coaches cannot submit challenges");
+    }
     const body = submissionBody.parse(req.body);
     const current = getCurrentChallengeDay();
     const openAllDays = areAllChallengeDaysOpen();

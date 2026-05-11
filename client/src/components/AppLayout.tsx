@@ -4,14 +4,18 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: Home, coachOnly: false },
-  { to: "/leaderboard", label: "Leaders", icon: Trophy, coachOnly: false },
-  { to: "/admin", label: "Coach", icon: ShieldCheck, coachOnly: true }
+  { to: "/", label: "Dashboard", icon: Home, coachOnly: false, playerOnly: true },
+  { to: "/leaderboard", label: "Leaders", icon: Trophy, coachOnly: false, playerOnly: false },
+  { to: "/admin", label: "Coach", icon: ShieldCheck, coachOnly: true, playerOnly: false }
 ] as const;
 
 export function AppLayout() {
   const { profile, team, logout } = useAuth();
-  const visibleItems = navItems.filter((item) => !item.coachOnly || profile?.role === "coach");
+  const visibleItems = navItems.filter((item) => {
+    if (item.coachOnly && profile?.role !== "coach") return false;
+    if (item.playerOnly && profile?.role === "coach") return false;
+    return true;
+  });
   const mobileColumnCount = visibleItems.length + 1;
 
   return (

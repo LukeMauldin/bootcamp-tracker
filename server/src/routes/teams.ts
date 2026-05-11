@@ -3,7 +3,7 @@ import { Router } from "express";
 import type { Submission, TeammateChallengeCompletion, TeammateStatus, UserProfile } from "@bootcamp/shared/types";
 
 import { loadProfile, type ProfileRequest, requireCoach, verifyIdToken } from "../auth.js";
-import { asyncHandler } from "../http.js";
+import { asyncHandler, HttpError } from "../http.js";
 import { challengeCatalog } from "../lib/catalog.js";
 import { getCurrentChallengeDay } from "../lib/day.js";
 import { db } from "../lib/firestore.js";
@@ -41,6 +41,9 @@ teamsRouter.get(
   verifyIdToken,
   loadProfile,
   asyncHandler<ProfileRequest>(async (req, res) => {
+    if (req.profile.role === "coach") {
+      throw new HttpError(403, "Coaches do not have teammates");
+    }
     const current = getCurrentChallengeDay();
     const usersSnapshot = await db.collection("users").where("teamId", "==", req.profile.teamId).get();
     const teammates = usersSnapshot.docs.map((doc) => ({ uid: doc.id, ...(doc.data() as Omit<UserProfile, "uid">) }));

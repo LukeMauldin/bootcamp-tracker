@@ -174,8 +174,10 @@ adminRouter.get(
       db.collection("submissions").where("status", "==", "verified").get()
     ]);
 
+    const players = usersSnapshot.docs.filter((doc) => (doc.data() as UserProfile).role !== "coach").length;
+
     res.json({
-      players: usersSnapshot.size,
+      players,
       teams: teamsSnapshot.size,
       pending: pendingSnapshot.size,
       verified: verifiedSnapshot.size

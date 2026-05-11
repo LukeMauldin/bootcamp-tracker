@@ -26,6 +26,7 @@ export function Register() {
         await createUserWithEmailAndPassword(firebaseAuth, email, password);
       }
       await apiPost("/api/register", { displayName, joinCode });
+      await firebaseAuth.currentUser?.getIdToken(true);
       await auth.refreshProfile();
       navigate("/", { replace: true });
     } catch (err) {

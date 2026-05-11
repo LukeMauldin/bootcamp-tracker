@@ -9,7 +9,7 @@ import ReactDOM from "react-dom/client";
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
-import { AuthProvider, CoachRoute, ProtectedRoute } from "./lib/auth";
+import { AuthProvider, CoachRoute, PlayerHomeRoute, ProtectedRoute } from "./lib/auth";
 import { Admin } from "./routes/Admin";
 import { Dashboard } from "./routes/Dashboard";
 import { Leaderboard } from "./routes/Leaderboard";
@@ -23,7 +23,14 @@ const router = createBrowserRouter(
       <Route path="/register" element={<Register />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route index element={<Dashboard />} />
+          <Route
+            index
+            element={
+              <PlayerHomeRoute>
+                <Dashboard />
+              </PlayerHomeRoute>
+            }
+          />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route element={<CoachRoute />}>
             <Route path="/admin" element={<Admin />} />

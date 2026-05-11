@@ -98,3 +98,11 @@ export function CoachRoute() {
   }
   return <Outlet />;
 }
+
+export function PlayerHomeRoute({ children }: { readonly children: ReactNode }) {
+  const auth = useAuth();
+  if (auth.profile?.role === "coach") {
+    return <Navigate to="/admin" replace />;
+  }
+  return <>{children}</>;
+}
