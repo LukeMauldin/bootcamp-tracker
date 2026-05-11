@@ -63,6 +63,8 @@ VITE_FIREBASE_PROJECT_ID=ch-bootcamp-496001
 VITE_FIREBASE_APP_ID=...
 ```
 
+Use the manual API key named `Bootcamp tracker web Firebase Auth key` for `VITE_FIREBASE_API_KEY`. It is restricted to Firebase Auth APIs and the Cloud Run/localhost HTTP referrers. Do not use `firebase apps:sdkconfig` as the source of truth for this value.
+
 Production builds receive these same `VITE_FIREBASE_*` values through Docker build args in `cloudbuild.yaml`. Configure the Cloud Build trigger substitutions for:
 
 ```text
@@ -100,7 +102,7 @@ Most project setup is captured in:
 ./scripts/provision-gcp.zsh
 ```
 
-The script enables required APIs, attaches Firebase, checks Firebase Auth initialization, creates Firestore/GCS/Artifact Registry resources, creates service accounts, applies IAM, writes Firebase web config, and attempts to create the Cloud Build trigger.
+The script enables required APIs, attaches Firebase, checks Firebase Auth initialization, creates Firestore/GCS/Artifact Registry resources, creates service accounts, applies IAM, writes Firebase web config from the manual auth-only API key, and attempts to create the Cloud Build trigger.
 
 Firebase Authentication may still require one manual console step:
 
@@ -262,6 +264,7 @@ bootcamp-builder@ch-bootcamp-496001.iam.gserviceaccount.com
 The browser is using stale or placeholder Firebase config.
 
 - Check `client/.env.local`.
+- Confirm `VITE_FIREBASE_API_KEY` is the manual auth-only key, not a Firebase-managed key returned by `firebase apps:sdkconfig`.
 - Restart Vite.
 - If serving from `8080`, rerun `npm run build`.
 

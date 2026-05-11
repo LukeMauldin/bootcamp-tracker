@@ -8,6 +8,7 @@ SERVICE_NAME="${SERVICE_NAME:-bootcamp-tracker}"
 BUCKET="${BUCKET:-ch-bootcamp-496001-uploads}"
 RUNTIME_SA_NAME="${RUNTIME_SA_NAME:-bootcamp-runtime}"
 WEB_APP_DISPLAY="${WEB_APP_DISPLAY:-Bootcamp Tracker Web}"
+WEB_API_KEY_DISPLAY="${WEB_API_KEY_DISPLAY:-Bootcamp tracker web Firebase Auth key}"
 GITHUB_OWNER="${GITHUB_OWNER:-LukeMauldin}"
 GITHUB_REPO="${GITHUB_REPO:-bootcamp-tracker}"
 FIREBASE_ACCOUNT="${FIREBASE_ACCOUNT:-lukemauldin@gmail.com}"
@@ -153,15 +154,23 @@ if [[ -z "${WEB_APP_ID}" ]]; then
   exit 1
 fi
 
+print "Finding Firebase Auth web API key"
+WEB_API_KEY_NAME="$(gcloud services api-keys list --project "${PROJECT_ID}" --format=json | jq -r --arg display "${WEB_API_KEY_DISPLAY}" '.[]? | select(.displayName == $display) | .name' | head -n 1)"
+if [[ -z "${WEB_API_KEY_NAME}" ]]; then
+  print -u2 "Could not find API key named: ${WEB_API_KEY_DISPLAY}"
+  print -u2 "Create the auth-only web key first, then rerun this script."
+  exit 1
+fi
+WEB_API_KEY="$(gcloud services api-keys get-key-string "${WEB_API_KEY_NAME}" --project "${PROJECT_ID}" --format='value(keyString)')"
+
 print "Writing Firebase web config to client/.env.local and client/.env.production"
-SDK_JSON="$(mktemp)"
-firebase apps:sdkconfig WEB "${WEB_APP_ID}" --project "${PROJECT_ID}" --account "${FIREBASE_ACCOUNT}" --json > "${SDK_JSON}"
-jq -r '
-  (.result.sdkConfig // .result) as $c |
-  "VITE_FIREBASE_API_KEY=\($c.apiKey)\nVITE_FIREBASE_AUTH_DOMAIN=\($c.authDomain)\nVITE_FIREBASE_PROJECT_ID=\($c.projectId)\nVITE_FIREBASE_APP_ID=\($c.appId)"
-' "${SDK_JSON}" > client/.env.local
+{
+  print "VITE_FIREBASE_API_KEY=${WEB_API_KEY}"
+  print "VITE_FIREBASE_AUTH_DOMAIN=${PROJECT_ID}.firebaseapp.com"
+  print "VITE_FIREBASE_PROJECT_ID=${PROJECT_ID}"
+  print "VITE_FIREBASE_APP_ID=${WEB_APP_ID}"
+} > client/.env.local
 cp client/.env.local client/.env.production
-rm -f "${SDK_JSON}"
 
 print "Creating Cloud Build GitHub trigger if the GitHub App connection is already available"
 if ! gcloud builds triggers list --project "${PROJECT_ID}" --format='value(name)' | grep -qx "${SERVICE_NAME}-main"; then

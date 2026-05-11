@@ -117,6 +117,8 @@ docker run --rm -p 8080:8080 \
 ## High-Risk Areas
 
 - Firebase Auth must be initialized in Firebase Console before email/password works.
+- The frontend should use the manual API key named `Bootcamp tracker web Firebase Auth key`; it is restricted to Firebase Auth APIs and the Cloud Run/localhost referrers.
+- Do not use `firebase apps:sdkconfig` as the source of truth for `VITE_FIREBASE_API_KEY`; it may return or recreate a broader Firebase-managed web key.
 - Vite env values are read at startup; restart Vite after editing `client/.env.local`.
 - Express on port `8080` serving `client/dist` can use stale config until `npm run build` is rerun.
 - Firestore rules intentionally deny all client reads/writes.
