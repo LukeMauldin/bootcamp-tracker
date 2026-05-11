@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
 import { Storage } from "@google-cloud/storage";
 
@@ -191,11 +193,11 @@ async function main(): Promise<void> {
   console.log(`  ${gcsDeleted} objects deleted`);
 
   console.log("");
-  console.log("Phase 4/4: Re-seeding teams via npm run seed -w server...");
-  const seedResult = spawnSync("npm", ["run", "seed", "-w", "server"], {
+  const seedScript = resolve(dirname(fileURLToPath(import.meta.url)), "seed-teams.ts");
+  console.log(`Phase 4/4: Re-seeding teams via tsx ${seedScript}...`);
+  const seedResult = spawnSync("npx", ["tsx", seedScript], {
     stdio: "inherit",
-    env: process.env,
-    cwd: process.cwd()
+    env: process.env
   });
   if (seedResult.status !== 0) {
     console.error("Seed step failed.");
