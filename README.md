@@ -69,6 +69,7 @@ service cloud.firestore {
 After credentials and Firestore are ready:
 
 ```bash
+export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
 npm run seed
 npm run set-coach -- coach@example.com
 ```
@@ -83,6 +84,20 @@ Seeded join codes:
 - Phoenix: `LADY-WHITE-44`
 - Titans: `LADY-GRAY-55`
 
+## Coach Access
+
+Coach access is a Firebase custom claim plus a mirror field in `users/{uid}` for display.
+
+1. Register the coach through the app with the intended email and any valid join code.
+2. Grant the custom claim:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
+npm run set-coach -- lukemauldin@gmail.com
+```
+
+3. Sign out and sign back in. The `/admin` route appears only after the refreshed ID token includes `role: "coach"`.
+
 ## Verification
 
 ```bash
@@ -93,3 +108,24 @@ docker run --rm -p 8080:8080 -e GCS_BUCKET=ch-bootcamp-496001-uploads bootcamp-t
 ```
 
 Use `CHALLENGE_DATE_OVERRIDE=2026-05-11` locally when testing the Monday challenge flow outside the event window.
+
+## Day-by-Day QA
+
+Run the app against the real Firebase/GCP project, changing `CHALLENGE_DATE_OVERRIDE` to simulate each event day:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
+export GCS_BUCKET=ch-bootcamp-496001-uploads
+export CHALLENGE_DATE_OVERRIDE=2026-05-11
+npm run dev
+```
+
+Use these dates:
+
+- Monday: `2026-05-11`
+- Tuesday: `2026-05-12`
+- Wednesday: `2026-05-13`
+- Thursday: `2026-05-14`
+- Friday: `2026-05-15`
+
+For each date, verify registration/login, today's challenge list, boolean or behavior submission, photo upload on photo days, coach verification, leaderboard point changes, and the streak badge after two consecutive verified days.

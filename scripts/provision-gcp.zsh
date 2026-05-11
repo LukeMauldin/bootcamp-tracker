@@ -58,11 +58,22 @@ fi
 
 print "Enabling Firebase Auth email/password"
 ACCESS_TOKEN="$(gcloud auth print-access-token)"
+AUTH_CONFIG_STATUS="$(curl -sS -o /tmp/bootcamp-auth-config.json -w "%{http_code}" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "x-goog-user-project: ${PROJECT_ID}" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config")"
+if [[ "${AUTH_CONFIG_STATUS}" == "404" ]] && grep -q "CONFIGURATION_NOT_FOUND" /tmp/bootcamp-auth-config.json; then
+  print -u2 "Firebase Authentication is not initialized for ${PROJECT_ID}."
+  print -u2 "Open Firebase Console -> Authentication -> Get started, then enable Email/Password and rerun this script."
+  exit 1
+fi
 curl -fsS -X PATCH \
   "https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config?updateMask=signIn.email.enabled,signIn.email.passwordRequired" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "x-goog-user-project: ${PROJECT_ID}" \
   -H "Content-Type: application/json" \
   -d '{"signIn":{"email":{"enabled":true,"passwordRequired":true}}}' >/dev/null
+rm -f /tmp/bootcamp-auth-config.json
 
 print "Creating Firestore database if needed"
 if ! gcloud firestore databases describe --database='(default)' --project "${PROJECT_ID}" >/dev/null 2>&1; then
