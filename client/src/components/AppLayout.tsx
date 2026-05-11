@@ -45,7 +45,9 @@ export function AppLayout() {
         <div className="absolute bottom-6 left-5 right-5">
           <div className="rounded-lg bg-white/10 p-3">
             <p className="text-sm font-semibold">{profile?.displayName}</p>
-            <p className="text-xs text-blue-200">{team?.name ?? "Team pending"}</p>
+            <p className="text-xs text-blue-200">
+              {team?.name ?? (profile?.role === "coach" ? "Coach" : "Team pending")}
+            </p>
           </div>
           <button className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-blue-100 hover:bg-white/10" onClick={() => void logout()}>
             <LogOut size={16} />

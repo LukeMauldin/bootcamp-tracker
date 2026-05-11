@@ -19,65 +19,80 @@ registerRouter.post(
   "/",
   verifyIdToken,
   asyncHandler<AuthedRequest>(async (req, res) => {
-    const body = registerBody.parse(req.body);
-    const normalizedJoinCode = body.joinCode.toUpperCase();
+    const userDocRef = db.collection("users").doc(req.user.uid);
+    const existingDocSnap = await userDocRef.get();
+    const isFreshSignup = !existingDocSnap.exists;
 
-    if (normalizedJoinCode === COACH_JOIN_CODE) {
+    try {
+      const body = registerBody.parse(req.body);
+      const normalizedJoinCode = body.joinCode.toUpperCase();
+
+      if (normalizedJoinCode === COACH_JOIN_CODE) {
+        const userRecord = await adminAuth.getUser(req.user.uid);
+        await adminAuth.setCustomUserClaims(req.user.uid, {
+          ...(userRecord.customClaims ?? {}),
+          role: "coach"
+        });
+
+        const profile: Omit<UserProfile, "uid"> = {
+          email: userRecord.email ?? req.user.email,
+          displayName: body.displayName,
+          teamId: COACH_TEAM_SENTINEL,
+          role: "coach",
+          createdAt: FieldValue.serverTimestamp()
+        };
+
+        await userDocRef.set(profile, { merge: false });
+
+        res.status(201).json({
+          user: {
+            uid: req.user.uid,
+            ...profile
+          },
+          team: null
+        });
+        return;
+      }
+
+      const teamSnapshot = await db.collection("teams").where("joinCode", "==", normalizedJoinCode).limit(1).get();
+
+      if (teamSnapshot.empty) {
+        throw new HttpError(400, "Invalid join code");
+      }
+
+      const teamDoc = teamSnapshot.docs[0];
+      if (!teamDoc) {
+        throw new HttpError(400, "Invalid join code");
+      }
+
       const userRecord = await adminAuth.getUser(req.user.uid);
-      await adminAuth.setCustomUserClaims(req.user.uid, {
-        ...(userRecord.customClaims ?? {}),
-        role: "coach"
-      });
-
+      const role = req.user.role;
       const profile: Omit<UserProfile, "uid"> = {
         email: userRecord.email ?? req.user.email,
         displayName: body.displayName,
-        teamId: COACH_TEAM_SENTINEL,
-        role: "coach",
+        teamId: teamDoc.id,
+        role,
         createdAt: FieldValue.serverTimestamp()
       };
 
-      await db.collection("users").doc(req.user.uid).set(profile, { merge: false });
+      await userDocRef.set(profile, { merge: false });
 
       res.status(201).json({
         user: {
           uid: req.user.uid,
           ...profile
         },
-        team: null
+        team: normalizeTeam(teamDoc.id, teamDoc.data())
       });
-      return;
+    } catch (err) {
+      if (isFreshSignup) {
+        try {
+          await adminAuth.deleteUser(req.user.uid);
+        } catch {
+          // Best-effort cleanup; swallow so the original error propagates.
+        }
+      }
+      throw err;
     }
-
-    const teamSnapshot = await db.collection("teams").where("joinCode", "==", normalizedJoinCode).limit(1).get();
-
-    if (teamSnapshot.empty) {
-      throw new HttpError(400, "Invalid join code");
-    }
-
-    const teamDoc = teamSnapshot.docs[0];
-    if (!teamDoc) {
-      throw new HttpError(400, "Invalid join code");
-    }
-
-    const userRecord = await adminAuth.getUser(req.user.uid);
-    const role = req.user.role;
-    const profile: Omit<UserProfile, "uid"> = {
-      email: userRecord.email ?? req.user.email,
-      displayName: body.displayName,
-      teamId: teamDoc.id,
-      role,
-      createdAt: FieldValue.serverTimestamp()
-    };
-
-    await db.collection("users").doc(req.user.uid).set(profile, { merge: false });
-
-    res.status(201).json({
-      user: {
-        uid: req.user.uid,
-        ...profile
-      },
-      team: normalizeTeam(teamDoc.id, teamDoc.data())
-    });
   })
 );

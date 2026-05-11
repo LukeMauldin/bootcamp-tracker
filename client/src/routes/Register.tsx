@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { UserPlus } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -21,8 +21,9 @@ export function Register() {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    const createdHere = !firebaseAuth.currentUser;
     try {
-      if (!firebaseAuth.currentUser) {
+      if (createdHere) {
         await createUserWithEmailAndPassword(firebaseAuth, email, password);
       }
       await apiPost("/api/register", { displayName, joinCode });
@@ -30,6 +31,13 @@ export function Register() {
       await auth.refreshProfile();
       navigate("/", { replace: true });
     } catch (err) {
+      if (createdHere && firebaseAuth.currentUser) {
+        try {
+          await signOut(firebaseAuth);
+        } catch {
+          // Best-effort local cleanup; the server has already deleted the auth user.
+        }
+      }
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setBusy(false);
