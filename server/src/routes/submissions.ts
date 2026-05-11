@@ -7,7 +7,7 @@ import type { Submission } from "@bootcamp/shared/types";
 import { loadProfile, type ProfileRequest, verifyIdToken } from "../auth.js";
 import { asyncHandler, HttpError } from "../http.js";
 import { challengeCatalog, getChallenge } from "../lib/catalog.js";
-import { getCurrentChallengeDay } from "../lib/day.js";
+import { areAllChallengeDaysOpen, challengeDays, getChallengeDayDate, getCurrentChallengeDay } from "../lib/day.js";
 import { db, FieldValue } from "../lib/firestore.js";
 import { getSubmissionPhoto, uploadSubmissionPhoto } from "../lib/gcs.js";
 import {
@@ -34,6 +34,7 @@ const upload = multer({
 });
 
 const submissionBody = z.object({
+  day: z.enum(challengeDays),
   challengeId: z.string().min(1),
   value: z.union([z.string(), z.number(), z.boolean()]).optional()
 });
@@ -48,16 +49,21 @@ submissionsRouter.post(
   asyncHandler<ProfileRequest>(async (req, res) => {
     const body = submissionBody.parse(req.body);
     const current = getCurrentChallengeDay();
-    if (!current.day) {
+    const openAllDays = areAllChallengeDaysOpen();
+    if (!openAllDays && !current.day) {
       throw new HttpError(400, "No active challenge day");
     }
-
-    const challenge = getChallenge(current.day, body.challengeId);
-    if (!challenge) {
+    if (!openAllDays && body.day !== current.day) {
       throw new HttpError(400, "Challenge is not active today");
     }
 
-    const submissionId = `${req.profile.uid}_${current.dayDate}_${challenge.id}`;
+    const challenge = getChallenge(body.day, body.challengeId);
+    if (!challenge) {
+      throw new HttpError(400, "Challenge is not available for the selected day");
+    }
+
+    const dayDate = getChallengeDayDate(body.day);
+    const submissionId = `${req.profile.uid}_${dayDate}_${challenge.id}`;
     const submissionRef = db.collection("submissions").doc(submissionId);
     const existing = await submissionRef.get();
     if (existing.exists && (existing.data() as Submission).status === "verified") {
@@ -95,8 +101,8 @@ submissionsRouter.post(
       userId: req.profile.uid,
       teamId: req.profile.teamId,
       challengeId: challenge.id,
-      day: current.day,
-      dayDate: current.dayDate,
+      day: body.day,
+      dayDate,
       type: challenge.type,
       value,
       photoPath,

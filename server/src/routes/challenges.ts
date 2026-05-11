@@ -3,7 +3,7 @@ import { Router } from "express";
 import { loadProfile, type ProfileRequest, verifyIdToken } from "../auth.js";
 import { asyncHandler } from "../http.js";
 import { challengeCatalog } from "../lib/catalog.js";
-import { getCurrentChallengeDay } from "../lib/day.js";
+import { areAllChallengeDaysOpen, getCurrentChallengeDay } from "../lib/day.js";
 import { db } from "../lib/firestore.js";
 
 export const challengesRouter = Router();
@@ -14,11 +14,13 @@ challengesRouter.get(
   loadProfile,
   asyncHandler<ProfileRequest>(async (req, res) => {
     const current = getCurrentChallengeDay();
+    const openAllDays = areAllChallengeDaysOpen();
     if (!current.day) {
       res.json({
         day: null,
         dayDate: current.dayDate,
         timezone: current.timezone,
+        openAllDays,
         challengeStartDate: challengeCatalog.challengeStartDate,
         days: challengeCatalog.days,
         challenges: [],
@@ -41,6 +43,7 @@ challengesRouter.get(
       day: current.day,
       dayDate: current.dayDate,
       timezone: current.timezone,
+      openAllDays,
       challengeStartDate: challengeCatalog.challengeStartDate,
       days: challengeCatalog.days,
       challenges: challengeCatalog.days[current.day],

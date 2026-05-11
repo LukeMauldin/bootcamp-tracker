@@ -154,22 +154,14 @@ The user must sign out and sign back in after the claim is set. The `/admin` rou
 
 The current challenge day is computed from `server/src/data/challenges.json`. Cloud Run runs in UTC, so server code uses the configured challenge timezone rather than `new Date()` directly.
 
-For QA, simulate days with:
+For QA, open submissions for every challenge day with:
 
 ```bash
-export CHALLENGE_DATE_OVERRIDE=2026-05-11
+export CHALLENGE_OPEN_ALL_DAYS=true
 npm run dev
 ```
 
-Restart the server after changing the override.
-
-| Day | Override date |
-| --- | --- |
-| Monday | `2026-05-11` |
-| Tuesday | `2026-05-12` |
-| Wednesday | `2026-05-13` |
-| Thursday | `2026-05-14` |
-| Friday | `2026-05-15` |
+When unset, submissions are open only for the locally computed challenge day. Restart the server after changing this variable.
 
 ## QA Checklist
 

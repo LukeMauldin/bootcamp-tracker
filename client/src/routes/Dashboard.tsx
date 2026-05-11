@@ -25,6 +25,7 @@ interface TodayPayload {
   readonly day: ChallengeDay | null;
   readonly dayDate: string;
   readonly timezone: string;
+  readonly openAllDays: boolean;
   readonly challengeStartDate: string;
   readonly days: Record<ChallengeDay, readonly Challenge[]>;
   readonly challenges: readonly Challenge[];
@@ -89,10 +90,12 @@ function ChallengeDescription({ challenge }: { readonly challenge: Challenge }) 
 }
 
 function ChallengeSubmit({
+  day,
   challenge,
   submitted,
   onSubmitted
 }: {
+  readonly day: ChallengeDay;
   readonly challenge: Challenge;
   readonly submitted?: Submission;
   readonly onSubmitted: () => Promise<void>;
@@ -121,6 +124,7 @@ function ChallengeSubmit({
     setError(null);
     try {
       const form = new FormData();
+      form.set("day", day);
       form.set("challengeId", challenge.id);
       if (challenge.type === "boolean") {
         form.set("value", "true");
@@ -214,7 +218,7 @@ export function Dashboard() {
         </section>
       ) : (
         <section className="space-y-5">
-          {!today.day ? (
+          {!today.day && !today.openAllDays ? (
             <div className="card p-4">
               <h2 className="text-lg font-bold">No active challenge day</h2>
               <p className="mt-1 text-sm text-gray-500">Submissions open during the Monday through Friday challenge window.</p>
@@ -235,6 +239,7 @@ export function Dashboard() {
                 <div className="grid gap-4 md:grid-cols-2">
                   {challenges.map((challenge) => {
                     const submitted = submissionsByChallenge.get(submissionKey(day, challenge.id));
+                    const canSubmit = today.openAllDays || isActiveDay;
                     return (
                       <article className="card p-5" key={challenge.id}>
                         <div className="flex items-start justify-between gap-3">
@@ -246,8 +251,8 @@ export function Dashboard() {
                         </div>
                         {submitted?.status === "verified" ? (
                           <p className="mt-4 text-sm font-semibold text-emerald-700">Verified · {submitted.pointsAwarded} points</p>
-                        ) : isActiveDay ? (
-                          <ChallengeSubmit challenge={challenge} submitted={submitted} onSubmitted={load} />
+                        ) : canSubmit ? (
+                          <ChallengeSubmit day={day} challenge={challenge} submitted={submitted} onSubmitted={load} />
                         ) : (
                           <p className="mt-4 text-sm font-semibold text-gray-500">Submissions open on {challengeDayLabels[day]} only.</p>
                         )}

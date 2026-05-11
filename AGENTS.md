@@ -51,23 +51,15 @@ gcloud auth application-default login \
   --impersonate-service-account=bootcamp-runtime@ch-bootcamp-496001.iam.gserviceaccount.com
 ```
 
-## Test Dates
+## QA Day Access
 
-The app computes the active challenge day from `server/src/data/challenges.json`. For QA, set:
+The app computes the active challenge day from `server/src/data/challenges.json`. For QA, open submissions for every challenge day with:
 
 ```bash
-export CHALLENGE_DATE_OVERRIDE=2026-05-11
+export CHALLENGE_OPEN_ALL_DAYS=true
 ```
 
-Date mapping:
-
-- Monday: `2026-05-11`
-- Tuesday: `2026-05-12`
-- Wednesday: `2026-05-13`
-- Thursday: `2026-05-14`
-- Friday: `2026-05-15`
-
-Restart the server after changing `CHALLENGE_DATE_OVERRIDE`.
+When unset, submissions are open only for the locally computed challenge day. Restart the server after changing `CHALLENGE_OPEN_ALL_DAYS`.
 
 ## Seeded Teams
 
