@@ -39,12 +39,12 @@ function HelpTooltip({ text }: { readonly text: string }) {
     <span className="group relative inline-flex">
       <button
         type="button"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-gray-500 transition hover:bg-slate-100 hover:text-blue-900 focus:bg-slate-100 focus:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition hover:bg-slate-100 hover:text-blue-900 focus:bg-slate-100 focus:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-100"
         aria-label={text}
       >
         <HelpCircle size={16} />
       </button>
-      <span className="pointer-events-none absolute left-1/2 top-8 z-10 hidden w-64 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg group-hover:block group-focus-within:block">
+      <span className="pointer-events-none absolute left-1/2 top-10 z-10 hidden w-64 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg group-hover:block group-focus-within:block">
         {text}
       </span>
     </span>

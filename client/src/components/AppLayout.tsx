@@ -12,9 +12,10 @@ const navItems = [
 export function AppLayout() {
   const { profile, team, logout } = useAuth();
   const visibleItems = navItems.filter((item) => !item.coachOnly || profile?.role === "coach");
+  const mobileColumnCount = visibleItems.length + 1;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 text-slate-900 md:pb-0">
+    <div className="min-h-screen bg-slate-50 pb-[calc(5rem+env(safe-area-inset-bottom))] text-slate-900 md:pb-0">
       <aside className="fixed inset-y-0 left-0 hidden w-64 bg-sentinel-navy px-5 py-6 text-white md:block">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-200">Lady Sentinels</p>
@@ -53,7 +54,10 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid border-t border-gray-200 bg-white md:hidden" style={{ gridTemplateColumns: `repeat(${visibleItems.length}, minmax(0, 1fr))` }}>
+      <nav
+        className="fixed inset-x-0 bottom-0 z-10 grid border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+        style={{ gridTemplateColumns: `repeat(${mobileColumnCount}, minmax(0, 1fr))` }}
+      >
         {visibleItems.map((item) => (
           <NavLink
             key={item.to}
@@ -67,6 +71,10 @@ export function AppLayout() {
             {item.label}
           </NavLink>
         ))}
+        <button className="flex h-16 flex-col items-center justify-center gap-1 text-xs font-semibold text-gray-500" onClick={() => void logout()} type="button">
+          <LogOut size={20} />
+          Sign out
+        </button>
       </nav>
     </div>
   );

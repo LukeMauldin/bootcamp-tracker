@@ -1,6 +1,5 @@
 import { Router } from "express";
 import multer from "multer";
-import { pipeline } from "node:stream/promises";
 import { z } from "zod";
 
 import type { Submission } from "@bootcamp/shared/types";
@@ -134,7 +133,7 @@ submissionsRouter.get(
   "/photos/:submissionId",
   verifyIdToken,
   loadProfile,
-  asyncHandler<ProfileRequest>(async (req, res) => {
+  asyncHandler<ProfileRequest>(async (req, res, next) => {
     const submissionId = req.params.submissionId;
     if (!submissionId) {
       throw new HttpError(400, "Missing submission id");
@@ -158,6 +157,19 @@ submissionsRouter.get(
     if (photo.contentLength) {
       res.setHeader("Content-Length", photo.contentLength);
     }
-    await pipeline(photo.stream, res);
+    photo.stream.on("error", (error) => {
+      if (req.destroyed || res.destroyed) {
+        return;
+      }
+      if (res.headersSent) {
+        res.destroy(error);
+        return;
+      }
+      next(error);
+    });
+    res.on("close", () => {
+      photo.stream.unpipe(res);
+    });
+    photo.stream.pipe(res);
   })
 );
