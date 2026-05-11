@@ -33,7 +33,8 @@ Backend local runs use Application Default Credentials:
 
 ```bash
 gcloud auth application-default login
-export GCS_BUCKET=lady-sentinels-uploads
+export GOOGLE_CLOUD_PROJECT=ch-bootcamp-496001
+export GCS_BUCKET=ch-bootcamp-496001-uploads
 npm run dev -w server
 ```
 
@@ -44,7 +45,7 @@ npm run dev -w server
 3. Add Firebase to the project and enable Email/Password sign-in.
 4. Create Firestore in Native mode.
 5. Apply Firestore rules that deny all client access.
-6. Create a private, uniform-access bucket named `lady-sentinels-uploads`.
+6. Create a private, uniform-access bucket named `ch-bootcamp-496001-uploads`.
 7. Create an Artifact Registry Docker repository named `app` in `us-central1`.
 8. Create `bootcamp-runtime@PROJECT_ID.iam.gserviceaccount.com` with Firestore, bucket object admin, Firebase Auth admin, and service-account token creator permissions.
 9. Connect the GitHub repo to Cloud Build and create a trigger for `main` using `cloudbuild.yaml`.
@@ -88,7 +89,7 @@ Seeded join codes:
 npm run typecheck
 npm run build
 docker build -t bootcamp-tracker .
-docker run --rm -p 8080:8080 -e GCS_BUCKET=lady-sentinels-uploads bootcamp-tracker
+docker run --rm -p 8080:8080 -e GCS_BUCKET=ch-bootcamp-496001-uploads bootcamp-tracker
 ```
 
 Use `CHALLENGE_DATE_OVERRIDE=2026-05-11` locally when testing the Monday challenge flow outside the event window.

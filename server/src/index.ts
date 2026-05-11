@@ -34,6 +34,10 @@ app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", teamsRouter);
 
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistCandidates = [
   process.env.CLIENT_DIST,

@@ -10,19 +10,18 @@ import { db } from "../lib/firestore.js";
 
 export const teamsRouter = Router();
 
-function streakDays(submissions: readonly Submission[]): number {
-  const verifiedDates = new Set(submissions.filter((item) => item.status === "verified").map((item) => item.dayDate));
-  let best = 0;
-  for (const date of verifiedDates) {
-    let current = 0;
-    const cursor = new Date(`${date}T00:00:00.000Z`);
-    while (verifiedDates.has(cursor.toISOString().slice(0, 10))) {
-      current += 1;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
-    }
-    best = Math.max(best, current);
+function currentStreak(submissions: readonly Submission[], asOf: string): number {
+  const verified = new Set(submissions.filter((item) => item.status === "verified").map((item) => item.dayDate));
+  const cursor = new Date(`${asOf}T00:00:00.000Z`);
+  if (!verified.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
-  return best;
+  let count = 0;
+  while (verified.has(cursor.toISOString().slice(0, 10))) {
+    count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  return count;
 }
 
 teamsRouter.get(
@@ -73,7 +72,7 @@ teamsRouter.get(
         displayName: teammate.displayName,
         completedToday,
         totalToday,
-        streakDays: streakDays(submissions)
+        streakDays: currentStreak(submissions, current.dayDate)
       };
     });
 

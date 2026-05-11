@@ -16,6 +16,6 @@ steps:
       - --service-account=bootcamp-runtime@$PROJECT_ID.iam.gserviceaccount.com
       - --min-instances=0
       - --max-instances=3
-      - --set-env-vars=GCS_BUCKET=lady-sentinels-uploads,TZ=UTC
+      - --set-env-vars=GCS_BUCKET=ch-bootcamp-496001-uploads,TZ=UTC
 options:
   logging: CLOUD_LOGGING_ONLY

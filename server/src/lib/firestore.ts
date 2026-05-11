@@ -3,8 +3,11 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 
 if (getApps().length === 0) {
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCLOUD_PROJECT ?? process.env.GCP_PROJECT;
+
   initializeApp({
-    credential: applicationDefault()
+    credential: applicationDefault(),
+    ...(projectId ? { projectId } : {})
   });
 }
 

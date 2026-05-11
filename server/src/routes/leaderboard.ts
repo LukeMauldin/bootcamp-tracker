@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import type { LeaderboardRow, Submission, Team } from "@bootcamp/shared/types";
+import type { LeaderboardRow, Submission, Team, UserProfile } from "@bootcamp/shared/types";
 
 import { loadProfile, verifyIdToken } from "../auth.js";
 import { asyncHandler } from "../http.js";
@@ -13,13 +13,15 @@ leaderboardRouter.get(
   verifyIdToken,
   loadProfile,
   asyncHandler(async (_req, res) => {
-    const [teamsSnapshot, submissionsSnapshot, adjustmentsSnapshot] = await Promise.all([
+    const [teamsSnapshot, submissionsSnapshot, adjustmentsSnapshot, usersSnapshot] = await Promise.all([
       db.collection("teams").get(),
       db.collection("submissions").where("status", "==", "verified").get(),
-      db.collection("pointAdjustments").get()
+      db.collection("pointAdjustments").get(),
+      db.collection("users").get()
     ]);
 
     const teams = teamsSnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Team, "id">) }));
+    const userTeam = new Map(usersSnapshot.docs.map((doc) => [doc.id, (doc.data() as UserProfile).teamId]));
     const pointsByTeam = new Map<string, number>();
     const verifiedByTeam = new Map<string, number>();
     const adjustmentsByTeam = new Map<string, number>();
@@ -31,11 +33,15 @@ leaderboardRouter.get(
     }
 
     for (const doc of adjustmentsSnapshot.docs) {
-      const adjustment = doc.data() as { teamId?: string | null; points?: number };
-      if (!adjustment.teamId || typeof adjustment.points !== "number") {
+      const adjustment = doc.data() as { teamId?: string | null; userId?: string | null; points?: number };
+      if (typeof adjustment.points !== "number") {
         continue;
       }
-      adjustmentsByTeam.set(adjustment.teamId, (adjustmentsByTeam.get(adjustment.teamId) ?? 0) + adjustment.points);
+      const teamId = adjustment.teamId ?? (adjustment.userId ? userTeam.get(adjustment.userId) ?? null : null);
+      if (!teamId) {
+        continue;
+      }
+      adjustmentsByTeam.set(teamId, (adjustmentsByTeam.get(teamId) ?? 0) + adjustment.points);
     }
 
     const rows: LeaderboardRow[] = teams

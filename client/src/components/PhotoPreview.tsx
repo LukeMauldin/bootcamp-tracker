@@ -1,26 +1,19 @@
 import { useEffect, useState } from "react";
 
-import { apiBlob } from "../lib/api";
+import { apiGet } from "../lib/api";
 
 export function PhotoPreview({ submissionId }: { readonly submissionId: string }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    let objectUrl: string | null = null;
-    void apiBlob(`/api/submissions/photos/${submissionId}`).then((blob) => {
-      if (!active) {
-        return;
+    void apiGet<{ url: string }>(`/api/submissions/photos/${submissionId}`).then((payload) => {
+      if (active) {
+        setUrl(payload.url);
       }
-      objectUrl = URL.createObjectURL(blob);
-      setUrl(objectUrl);
     });
-
     return () => {
       active = false;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
     };
   }, [submissionId]);
 

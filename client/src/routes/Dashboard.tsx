@@ -20,19 +20,18 @@ interface TeammatesPayload {
   readonly teammates: readonly TeammateStatus[];
 }
 
-function maxVerifiedStreak(submissions: readonly Submission[]): number {
-  const dates = new Set(submissions.filter((submission) => submission.status === "verified").map((submission) => submission.dayDate));
-  let best = 0;
-  for (const date of dates) {
-    const cursor = new Date(`${date}T00:00:00.000Z`);
-    let current = 0;
-    while (dates.has(cursor.toISOString().slice(0, 10))) {
-      current += 1;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
-    }
-    best = Math.max(best, current);
+function currentStreak(submissions: readonly Submission[], asOf: string): number {
+  const verified = new Set(submissions.filter((submission) => submission.status === "verified").map((submission) => submission.dayDate));
+  const cursor = new Date(`${asOf}T00:00:00.000Z`);
+  if (!verified.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
-  return best;
+  let count = 0;
+  while (verified.has(cursor.toISOString().slice(0, 10))) {
+    count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  return count;
 }
 
 function ChallengeSubmit({
@@ -115,7 +114,7 @@ export function Dashboard() {
     void load().finally(() => setLoading(false));
   }, []);
 
-  const streak = useMemo(() => maxVerifiedStreak(history), [history]);
+  const streak = useMemo(() => (today ? currentStreak(history, today.dayDate) : 0), [history, today?.dayDate]);
 
   if (loading) {
     return <p className="text-sm text-gray-500">Loading dashboard</p>;
@@ -155,7 +154,11 @@ export function Dashboard() {
                   </div>
                   {submitted ? <StatusPill status={submitted.status} /> : null}
                 </div>
-                <ChallengeSubmit challenge={challenge} submitted={submitted} onSubmitted={load} />
+                {submitted?.status === "verified" ? (
+                  <p className="mt-4 text-sm font-semibold text-emerald-700">Verified · {submitted.pointsAwarded} points</p>
+                ) : (
+                  <ChallengeSubmit challenge={challenge} submitted={submitted} onSubmitted={load} />
+                )}
               </article>
             );
           })}

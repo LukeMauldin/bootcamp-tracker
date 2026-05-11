@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { Readable } from "node:stream";
 import multer from "multer";
 import { z } from "zod";
 
@@ -44,6 +43,13 @@ submissionsRouter.post(
       throw new HttpError(400, "Challenge is not active today");
     }
 
+    const submissionId = `${req.profile.uid}_${current.dayDate}_${challenge.id}`;
+    const submissionRef = db.collection("submissions").doc(submissionId);
+    const existing = await submissionRef.get();
+    if (existing.exists && (existing.data() as Submission).status === "verified") {
+      throw new HttpError(409, "This challenge has already been verified and cannot be resubmitted.");
+    }
+
     let value: number | boolean | null = null;
     if (challenge.type === "boolean") {
       value = body.value === undefined ? true : body.value === true || body.value === "true";
@@ -67,7 +73,6 @@ submissionsRouter.post(
         })
       : null;
 
-    const submissionId = `${req.profile.uid}_${current.dayDate}_${challenge.id}`;
     const submission: Omit<Submission, "id"> = {
       userId: req.profile.uid,
       teamId: req.profile.teamId,
@@ -87,7 +92,7 @@ submissionsRouter.post(
       adminNote: null
     };
 
-    await db.collection("submissions").doc(submissionId).set(submission, { merge: false });
+    await submissionRef.set(submission, { merge: false });
     res.status(201).json({ submission: { id: submissionId, ...submission } });
   })
 );
@@ -128,14 +133,8 @@ submissionsRouter.get(
       throw new HttpError(404, "Submission has no photo");
     }
 
-    const signedUrl = await createSignedReadUrl(submission.photoPath);
-    const upstream = await fetch(signedUrl);
-    if (!upstream.ok || !upstream.body) {
-      throw new HttpError(502, "Unable to read photo");
-    }
-
-    res.setHeader("Content-Type", upstream.headers.get("content-type") ?? "application/octet-stream");
-    res.setHeader("Cache-Control", "private, max-age=300");
-    Readable.fromWeb(upstream.body).pipe(res);
+    const url = await createSignedReadUrl(submission.photoPath);
+    res.setHeader("Cache-Control", "private, max-age=240");
+    res.json({ url });
   })
 );
