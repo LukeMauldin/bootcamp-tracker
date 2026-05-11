@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { pipeline } from "node:stream/promises";
 import { z } from "zod";
 
 import type { Submission } from "@bootcamp/shared/types";
@@ -9,7 +10,7 @@ import { asyncHandler, HttpError } from "../http.js";
 import { challengeCatalog, getChallenge } from "../lib/catalog.js";
 import { getCurrentChallengeDay } from "../lib/day.js";
 import { db, FieldValue } from "../lib/firestore.js";
-import { createSignedReadUrl, uploadSubmissionPhoto } from "../lib/gcs.js";
+import { getSubmissionPhoto, uploadSubmissionPhoto } from "../lib/gcs.js";
 import {
   detectSupportedPhotoMimeType,
   isSupportedPhotoMimeType,
@@ -151,8 +152,12 @@ submissionsRouter.get(
       throw new HttpError(404, "Submission has no photo");
     }
 
-    const url = await createSignedReadUrl(submission.photoPath);
-    res.setHeader("Cache-Control", "private, max-age=240");
-    res.json({ url });
+    const photo = await getSubmissionPhoto(submission.photoPath);
+    res.setHeader("Cache-Control", photo.cacheControl ?? "private, max-age=240");
+    res.setHeader("Content-Type", photo.contentType);
+    if (photo.contentLength) {
+      res.setHeader("Content-Length", photo.contentLength);
+    }
+    await pipeline(photo.stream, res);
   })
 );

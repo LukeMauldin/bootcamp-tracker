@@ -5,6 +5,7 @@ import type {
   LeaderboardDetailAdjustment,
   LeaderboardDetailPlayer,
   LeaderboardDetailSubmission,
+  LeaderboardGroup,
   LeaderboardRow,
   Submission,
   Team,
@@ -15,6 +16,7 @@ import { loadProfile, type ProfileRequest, requireCoach, verifyIdToken } from ".
 import { asyncHandler, HttpError } from "../http.js";
 import { challengeCatalog } from "../lib/catalog.js";
 import { db } from "../lib/firestore.js";
+import { compareTeams, normalizeTeam, TEAM_DIVISION_LABELS, TEAM_DIVISION_ORDER } from "../lib/teams.js";
 
 export const leaderboardRouter = Router();
 
@@ -43,7 +45,7 @@ leaderboardRouter.get(
       db.collection("users").get()
     ]);
 
-    const teams = teamsSnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Team, "id">) }));
+    const teams = teamsSnapshot.docs.map((doc) => normalizeTeam(doc.id, doc.data())).sort(compareTeams);
     const userTeam = new Map(usersSnapshot.docs.map((doc) => [doc.id, (doc.data() as UserProfile).teamId]));
     const pointsByTeam = new Map<string, number>();
     const verifiedByTeam = new Map<string, number>();
@@ -75,16 +77,22 @@ leaderboardRouter.get(
           teamId: team.id,
           name: team.name,
           color: team.color,
+          division: team.division,
           points: submissionPoints + adjustments,
           verifiedSubmissions: verifiedByTeam.get(team.id) ?? 0,
           adjustments,
           rank: 0
         };
       })
-      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
-      .map((row, index) => ({ ...row, rank: index + 1 }));
+      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
 
-    res.json({ leaderboard: rows });
+    const groups: LeaderboardGroup[] = TEAM_DIVISION_ORDER.map((division) => ({
+      division,
+      label: TEAM_DIVISION_LABELS[division],
+      rows: rows.filter((row) => row.division === division).map((row, index) => ({ ...row, rank: index + 1 }))
+    })).filter((group) => group.rows.length > 0);
+
+    res.json({ leaderboard: groups });
   })
 );
 
@@ -110,7 +118,7 @@ leaderboardRouter.get(
       throw new HttpError(404, "Team not found");
     }
 
-    const team: Team = { id: teamSnapshot.id, ...(teamSnapshot.data() as Omit<Team, "id">) };
+    const team: Team = normalizeTeam(teamSnapshot.id, teamSnapshot.data());
     const users = usersSnapshot.docs.map((doc) => ({ uid: doc.id, ...(doc.data() as Omit<UserProfile, "uid">) }));
     const usersById = new Map(users.map((user) => [user.uid, user]));
     const submissions = submissionsSnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Submission, "id">) }));

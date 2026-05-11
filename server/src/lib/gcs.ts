@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { Readable } from "node:stream";
 
 import { Storage } from "@google-cloud/storage";
 
@@ -40,11 +41,19 @@ export async function uploadSubmissionPhoto(params: {
   return objectPath;
 }
 
-export async function createSignedReadUrl(objectPath: string): Promise<string> {
-  const [url] = await storage.bucket(getBucketName()).file(objectPath).getSignedUrl({
-    action: "read",
-    expires: Date.now() + 5 * 60 * 1000,
-    version: "v4"
-  });
-  return url;
+export async function getSubmissionPhoto(objectPath: string): Promise<{
+  readonly cacheControl: string | null;
+  readonly contentLength: string | null;
+  readonly contentType: string;
+  readonly stream: Readable;
+}> {
+  const object = storage.bucket(getBucketName()).file(objectPath);
+  const [metadata] = await object.getMetadata();
+
+  return {
+    cacheControl: typeof metadata.cacheControl === "string" ? metadata.cacheControl : null,
+    contentLength: typeof metadata.size === "string" ? metadata.size : null,
+    contentType: typeof metadata.contentType === "string" ? metadata.contentType : "application/octet-stream",
+    stream: object.createReadStream()
+  };
 }

@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 
-import type { Team, UserProfile } from "@bootcamp/shared/types";
+import type { UserProfile } from "@bootcamp/shared/types";
 
 import { type AuthedRequest, verifyIdToken } from "../auth.js";
 import { asyncHandler, HttpError } from "../http.js";
 import { adminAuth, db, FieldValue } from "../lib/firestore.js";
+import { normalizeTeam } from "../lib/teams.js";
 
 const registerBody = z.object({
   displayName: z.string().trim().min(1).max(80),
@@ -48,10 +49,7 @@ registerRouter.post(
         uid: req.user.uid,
         ...profile
       },
-      team: {
-        id: teamDoc.id,
-        ...(teamDoc.data() as Omit<Team, "id">)
-      }
+      team: normalizeTeam(teamDoc.id, teamDoc.data())
     });
   })
 );

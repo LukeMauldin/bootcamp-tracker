@@ -6,11 +6,14 @@ export type ChallengeType = "boolean" | "behavior" | "photo";
 
 export type SubmissionStatus = "pending" | "verified" | "rejected";
 
+export type TeamDivision = "high_school" | "jr_high";
+
 export interface Challenge {
   readonly id: string;
   readonly type: ChallengeType;
   readonly title: string;
   readonly description: string;
+  readonly bonusAvailable?: boolean;
 }
 
 export interface ChallengeCatalog {
@@ -26,6 +29,8 @@ export interface Team {
   readonly name: string;
   readonly joinCode: string;
   readonly color: string;
+  readonly division: TeamDivision;
+  readonly sortOrder: number;
   readonly createdAt?: unknown;
 }
 
@@ -62,10 +67,17 @@ export interface LeaderboardRow {
   readonly teamId: string;
   readonly name: string;
   readonly color: string;
+  readonly division: TeamDivision;
   readonly points: number;
   readonly verifiedSubmissions: number;
   readonly adjustments: number;
   readonly rank: number;
+}
+
+export interface LeaderboardGroup {
+  readonly division: TeamDivision;
+  readonly label: string;
+  readonly rows: readonly LeaderboardRow[];
 }
 
 export interface LeaderboardDetailPlayer {

@@ -29,7 +29,8 @@
         "id": "clean-room",
         "type": "photo",
         "title": "Clean Your Room",
-        "description": "Before/after photos. Bonus if a parent is in the after photo."
+        "description": "Before/after photos. Bonus if a parent is in the after photo.",
+        "bonusAvailable": true
       },
       {
         "id": "behavior-tue",

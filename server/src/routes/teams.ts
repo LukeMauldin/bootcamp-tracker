@@ -1,12 +1,13 @@
 import { Router } from "express";
 
-import type { Submission, Team, TeammateStatus, UserProfile } from "@bootcamp/shared/types";
+import type { Submission, TeammateStatus, UserProfile } from "@bootcamp/shared/types";
 
 import { loadProfile, type ProfileRequest, requireCoach, verifyIdToken } from "../auth.js";
 import { asyncHandler } from "../http.js";
 import { challengeCatalog } from "../lib/catalog.js";
 import { getCurrentChallengeDay } from "../lib/day.js";
 import { db } from "../lib/firestore.js";
+import { compareTeams, normalizeTeam } from "../lib/teams.js";
 
 export const teamsRouter = Router();
 
@@ -30,8 +31,8 @@ teamsRouter.get(
   loadProfile,
   requireCoach,
   asyncHandler(async (_req, res) => {
-    const snapshot = await db.collection("teams").orderBy("name", "asc").get();
-    res.json({ teams: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) });
+    const snapshot = await db.collection("teams").get();
+    res.json({ teams: snapshot.docs.map((doc) => normalizeTeam(doc.id, doc.data())).sort(compareTeams) });
   })
 );
 
@@ -78,7 +79,7 @@ teamsRouter.get(
 
     const teamSnapshot = await db.collection("teams").doc(req.profile.teamId).get();
     res.json({
-      team: teamSnapshot.exists ? ({ id: teamSnapshot.id, ...teamSnapshot.data() } as Team) : null,
+      team: teamSnapshot.exists ? normalizeTeam(teamSnapshot.id, teamSnapshot.data()) : null,
       teammates: statuses
     });
   })

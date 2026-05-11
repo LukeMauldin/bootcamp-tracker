@@ -127,13 +127,17 @@ npm run seed
 
 Join codes:
 
-| Team | Join code |
+| Division | Team | Join code |
 | --- | --- |
-| Lightning | `LADY-NAVY-11` |
-| Comets | `LADY-GOLD-22` |
-| Storm | `LADY-RED-33` |
-| Phoenix | `LADY-WHITE-44` |
-| Titans | `LADY-GRAY-55` |
+| High School | Team 1 | `LADY-NAVY-11` |
+| High School | Team 2 | `LADY-GOLD-22` |
+| High School | Team 3 | `LADY-RED-33` |
+| High School | Team 4 | `LADY-WHITE-44` |
+| High School | Team 5 | `LADY-GRAY-55` |
+| Jr High | Team 10 | `LADY-JR-10` |
+| Jr High | Team 11 | `LADY-JR-11` |
+| Jr High | Team 12 | `LADY-JR-12` |
+| Jr High | Team 13 | `LADY-JR-13` |
 
 ## Coach Access
 

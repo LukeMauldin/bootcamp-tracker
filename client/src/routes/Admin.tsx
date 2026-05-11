@@ -1,13 +1,15 @@
-import { Check, RefreshCw, Send, X } from "lucide-react";
+import { Check, HelpCircle, RefreshCw, Send, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
-import type { Submission, SubmissionStatus, Team, UserProfile } from "@bootcamp/shared/types";
+import type { Submission, SubmissionStatus, Team, TeamDivision, UserProfile } from "@bootcamp/shared/types";
 
 import { PhotoPreview } from "../components/PhotoPreview";
 import { StatusPill } from "../components/StatusPill";
 import { apiGet, apiPost } from "../lib/api";
 
 type AdminSubmission = Submission & {
+  readonly bonusAvailable: boolean;
+  readonly bonusPointValue: number;
   readonly user: UserProfile | null;
   readonly team: Team | null;
 };
@@ -19,6 +21,36 @@ interface Stats {
   readonly verified: number;
 }
 
+const teamDivisionLabels: Record<TeamDivision, string> = {
+  high_school: "High School",
+  jr_high: "Jr High"
+};
+
+const teamDivisionOrder: readonly TeamDivision[] = ["high_school", "jr_high"];
+
+function teamsByDivision(teams: readonly Team[]): Array<readonly [TeamDivision, readonly Team[]]> {
+  return teamDivisionOrder
+    .map((division) => [division, teams.filter((team) => team.division === division)] as const)
+    .filter(([, divisionTeams]) => divisionTeams.length > 0);
+}
+
+function HelpTooltip({ text }: { readonly text: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-gray-500 transition hover:bg-slate-100 hover:text-blue-900 focus:bg-slate-100 focus:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        aria-label={text}
+      >
+        <HelpCircle size={16} />
+      </button>
+      <span className="pointer-events-none absolute left-1/2 top-8 z-10 hidden w-64 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg group-hover:block group-focus-within:block">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 export function Admin() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [submissions, setSubmissions] = useState<readonly AdminSubmission[]>([]);
@@ -27,6 +59,7 @@ export function Admin() {
   const [adjustmentTeamId, setAdjustmentTeamId] = useState("");
   const [adjustmentPoints, setAdjustmentPoints] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  const groupedTeams = teamsByDivision(teams);
 
   async function load(): Promise<void> {
     const query = status === "all" ? "" : `?status=${status}`;
@@ -96,19 +129,57 @@ export function Admin() {
         ))}
       </section>
 
-      <section className="card p-4">
+      <section className="card space-y-3 p-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-bold">Point adjustment</h2>
+          <HelpTooltip text="Adds or subtracts points from the selected team's leaderboard total. Use a clear reason because adjustments are shown in team details." />
+        </div>
         <form className="grid gap-3 sm:grid-cols-[1fr_120px_2fr_auto]" onSubmit={(event) => void createAdjustment(event)}>
-          <select className="field" value={adjustmentTeamId} onChange={(event) => setAdjustmentTeamId(event.target.value)} required>
-            <option value="">Team</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-          <input className="field" inputMode="numeric" placeholder="-3" value={adjustmentPoints} onChange={(event) => setAdjustmentPoints(event.target.value)} required />
-          <input className="field" placeholder="Reason" value={adjustmentReason} onChange={(event) => setAdjustmentReason(event.target.value)} required />
-          <button className="btn-primary">
+          <label>
+            <span className="sr-only">Team</span>
+            <select
+              className="field"
+              value={adjustmentTeamId}
+              onChange={(event) => setAdjustmentTeamId(event.target.value)}
+              title="Team receiving the point adjustment."
+              required
+            >
+              <option value="">Team</option>
+              {groupedTeams.map(([division, divisionTeams]) => (
+                <optgroup key={division} label={teamDivisionLabels[division]}>
+                  {divisionTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="sr-only">Points</span>
+            <input
+              className="field"
+              inputMode="numeric"
+              placeholder="5"
+              value={adjustmentPoints}
+              onChange={(event) => setAdjustmentPoints(event.target.value)}
+              title="Enter a whole number. Positive values add points; negative values subtract points."
+              required
+            />
+          </label>
+          <label>
+            <span className="sr-only">Reason</span>
+            <input
+              className="field"
+              placeholder="Reason"
+              value={adjustmentReason}
+              onChange={(event) => setAdjustmentReason(event.target.value)}
+              title="Short reason shown in leaderboard team details."
+              required
+            />
+          </label>
+          <button className="btn-primary" title="Create the point adjustment for the selected team.">
             <Send size={16} />
             Add
           </button>
@@ -118,63 +189,95 @@ export function Admin() {
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold">Submissions</h2>
-          <select className="field max-w-40" value={status} onChange={(event) => setStatus(event.target.value as SubmissionStatus | "all")}>
-            <option value="pending">Pending</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
-            <option value="all">All</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <HelpTooltip text="Filter submissions by review state. Coaches usually clear Pending first, then audit Verified or Rejected if needed." />
+            <select
+              className="field max-w-40"
+              value={status}
+              onChange={(event) => setStatus(event.target.value as SubmissionStatus | "all")}
+              title="Filter submissions by status."
+            >
+              <option value="pending">Pending</option>
+              <option value="verified">Verified</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All</option>
+            </select>
+          </div>
         </div>
         <div className="space-y-4">
-          {submissions.map((submission) => (
-            <article className="card p-4" key={submission.id}>
-              <div className="flex flex-col gap-4 md:flex-row md:items-start">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 font-bold text-white">
-                      {(submission.user?.displayName ?? "?").slice(0, 1).toUpperCase()}
+          {submissions.map((submission) => {
+            const basePoints = submission.basePoints;
+            const bonusTotal = submission.basePoints + submission.bonusPointValue;
+            return (
+              <article className="card p-4" key={submission.id}>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 font-bold text-white">
+                        {(submission.user?.displayName ?? "?").slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">{submission.user?.displayName ?? submission.userId}</p>
+                        <p className="text-sm text-gray-500">
+                          {submission.team?.name ?? submission.teamId} · {submission.challengeId} · {submission.dayDate}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-bold">{submission.user?.displayName ?? submission.userId}</p>
-                      <p className="text-sm text-gray-500">
-                        {submission.team?.name ?? submission.teamId} · {submission.challengeId} · {submission.dayDate}
-                      </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <StatusPill status={submission.status} />
+                      {submission.value !== null ? <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">value {String(submission.value)}</span> : null}
                     </div>
+                    {submission.photoPath ? (
+                      <div className="mt-3 max-w-xs">
+                        <PhotoPreview submissionId={submission.id} />
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <StatusPill status={submission.status} />
-                    {submission.value !== null ? <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">value {String(submission.value)}</span> : null}
+                  <div className="grid gap-2 sm:grid-cols-2 md:w-72 md:grid-cols-1">
+                    <p className="text-xs font-medium leading-relaxed text-gray-500 sm:col-span-2 md:col-span-1">
+                      {submission.bonusAvailable
+                        ? `Verify ${basePoints} awards base points. Verify ${bonusTotal} adds the coach bonus.`
+                        : `Verify awards ${basePoints} base points.`}
+                    </p>
+                    <button className="btn-primary" onClick={() => void verify(submission.id, true, 0)} title={`Approve this submission for its base ${basePoints} points.`}>
+                      <Check size={16} />
+                      Verify {basePoints} pts
+                    </button>
+                    {submission.bonusAvailable ? (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => void verify(submission.id, true, submission.bonusPointValue)}
+                        title={`Approve this submission with a ${submission.bonusPointValue}-point bonus, for ${bonusTotal} total points.`}
+                      >
+                        <Check size={16} />
+                        Verify {bonusTotal} pts
+                      </button>
+                    ) : null}
+                    <button className="btn-secondary" onClick={() => void verify(submission.id, false)} title="Reject this submission and award 0 points.">
+                      <X size={16} />
+                      Reject
+                    </button>
+                    <select
+                      className="field"
+                      value={submission.user?.teamId ?? ""}
+                      onChange={(event) => submission.user && void moveUser(submission.user.uid, event.target.value)}
+                      title="Move this player and their existing submissions to another team."
+                    >
+                      {groupedTeams.map(([division, divisionTeams]) => (
+                        <optgroup key={division} label={teamDivisionLabels[division]}>
+                          {divisionTeams.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              Move: {team.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
                   </div>
-                  {submission.photoPath ? (
-                    <div className="mt-3 max-w-xs">
-                      <PhotoPreview submissionId={submission.id} />
-                    </div>
-                  ) : null}
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 md:w-72 md:grid-cols-1">
-                  <button className="btn-primary" onClick={() => void verify(submission.id, true, 0)}>
-                    <Check size={16} />
-                    Verify 5
-                  </button>
-                  <button className="btn-secondary" onClick={() => void verify(submission.id, true, 2)}>
-                    <Check size={16} />
-                    Verify 7
-                  </button>
-                  <button className="btn-secondary" onClick={() => void verify(submission.id, false)}>
-                    <X size={16} />
-                    Reject
-                  </button>
-                  <select className="field" value={submission.user?.teamId ?? ""} onChange={(event) => submission.user && void moveUser(submission.user.uid, event.target.value)}>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        Move: {team.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>

@@ -5,11 +5,13 @@ import type { Submission, SubmissionStatus, Team, UserProfile } from "@bootcamp/
 
 import { loadProfile, requireCoach, type ProfileRequest, verifyIdToken } from "../auth.js";
 import { asyncHandler, HttpError } from "../http.js";
+import { challengeCatalog, getChallenge } from "../lib/catalog.js";
 import { db, FieldValue } from "../lib/firestore.js";
+import { normalizeTeam } from "../lib/teams.js";
 
 const verifyBody = z.object({
   status: z.enum(["verified", "rejected"]),
-  bonusPoints: z.coerce.number().int().min(0).max(2).optional(),
+  bonusPoints: z.coerce.number().int().min(0).max(challengeCatalog.bonusPoints).optional(),
   adminNote: z.string().max(500).optional()
 });
 
@@ -53,7 +55,7 @@ adminRouter.get(
     ]);
 
     const users = new Map(usersSnapshot.docs.map((doc) => [doc.id, { uid: doc.id, ...(doc.data() as Omit<UserProfile, "uid">) }]));
-    const teams = new Map(teamsSnapshot.docs.map((doc) => [doc.id, { id: doc.id, ...(doc.data() as Omit<Team, "id">) }]));
+    const teams = new Map(teamsSnapshot.docs.map((doc) => [doc.id, normalizeTeam(doc.id, doc.data())]));
     const submissions = submissionsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Submission, "id">) }))
       .sort((left, right) => {
@@ -65,8 +67,11 @@ adminRouter.get(
 
     res.json({
       submissions: submissions.map((submission) => {
+        const challenge = getChallenge(submission.day, submission.challengeId);
         return {
           ...submission,
+          bonusAvailable: challenge?.bonusAvailable === true,
+          bonusPointValue: challengeCatalog.bonusPoints,
           user: users.get(submission.userId) ?? null,
           team: teams.get(submission.teamId) ?? null
         };
@@ -91,6 +96,10 @@ adminRouter.post(
 
     const submission = snapshot.data() as Submission;
     const bonusPoints = body.status === "verified" ? (body.bonusPoints ?? 0) : 0;
+    const challenge = getChallenge(submission.day, submission.challengeId);
+    if (bonusPoints > 0 && challenge?.bonusAvailable !== true) {
+      throw new HttpError(400, "Bonus points are not available for this challenge");
+    }
     const pointsAwarded = body.status === "verified" ? submission.basePoints + bonusPoints : 0;
 
     await ref.update({
